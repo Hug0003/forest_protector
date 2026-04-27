@@ -34,7 +34,28 @@
     * Profil 1 : Développeur + DevOps.
     * Profil 2 : Administrateur Systèmes + Expert Cybersécurité.
     * Profil 3 : Product Owner + Administrateur Systèmes & Sécurité.
-    
+
+* **Détail du Budget Prévisionnel (IoT & Infrastructure) :**
+
+| Poste de dépense | Détails | Quantité | Prix Unitaire | Total HT |
+| :--- | :--- | :---: | :---: | :---: |
+| **Matériel (Hardware & Réseau)** | | | | |
+| Passerelles LoRaWAN | Antennes relais sur pylônes / points hauts | 4 | 1 200 € | 4 800 € |
+| Capteurs Multi-paramètres | Air / Temp / Fumée / Gaz (1 tous les 10 ha) | 100 | 220 € | 22 000 € |
+| Capteurs Humidité du Sol | Sondes profondes (1 toutes les 10 ha) | 100 | 180 € | 18 000 € |
+| Kits d'alimentation | Panneaux solaires + batteries longue durée | 204 | 90 € | 18 360 € |
+| **Infrastructure & Cyber** | | | | |
+| API Vue Satellite Météo | Accès temps réel haute résolution (Annuel) | 1 | 3 500 € | 3 500 € |
+| Serveurs & Cloud Souverain | Cluster redondant (SecNumCloud) (Annuel) | 1 | 4 800 € | 4 800 € |
+| Audits & Certificats | Certificats SSL/TLS, outils de Pentest | 1 | 1 500 € | 1 500 € |
+| **Main d'œuvre (TJM 450€)** | *(Total : 6 mois, soit ~120 jours/personne)* | | | |
+| Développeur Fullstack | 120 jours de travail | 1 | 450 € | 54 000 € |
+| AdminSys / Cyber | 120 jours x 2 personnes | 2 | 450 € | 108 000 € |
+| | | | | |
+| **TOTAL GÉNÉRAL** | | | | **234 960 €** |
+
+> **Note sur la maintenance :** Le coût de maintenance annuelle est estimé entre 7 296 € (basse - 10%) et 14 592 € (haute - 20%).
+
 
 ## 6. Analyse des Risques & Actions Préventives
 
