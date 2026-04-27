@@ -1,0 +1,156 @@
+
+services:
+  # =========================================================
+  # BASE DE DONNÉES TIMESCALEDB (PostgreSQL + extensions IoT)
+  # =========================================================
+  timescaledb:
+    image: timescale/timescaledb-ha:pg14-latest
+    container_name: forest_timescaledb
+    environment:
+      POSTGRES_DB: forest_monitoring
+      POSTGRES_USER: forest_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Optimisations TimescaleDB pour la performance
+    volumes:
+      # Données persistantes (survivent aux redémarrages du container)
+      - timescale_data:/var/lib/postgresql/data
+      # Script SQL exécuté automatiquement à la première création de la DB
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      # Accessible depuis l'hôte pour les outils DB (DBeaver, pgAdmin)
+      - "5432:5432"
+    networks:
+      - forest_network
+    # Redémarre automatiquement si le container crashe
+    restart: unless-stopped
+    # Vérification de santé (les autres services attendent que la DB soit prête)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forest_admin -d forest_monitoring"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================================================
+  # BACKEND FASTAPI
+  # =========================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: forest_backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://forest_admin:${DB_PASSWORD}@timescaledb:5432/forest_monitoring
+      JWT_SECRET: ${JWT_SECRET}
+      WEATHER_API_KEY: ${WEATHER_API_KEY}
+      # Environnement (dev/prod change certains comportements)
+      ENVIRONMENT: development
+    depends_on:
+      # Ne démarre qu'une fois que TimescaleDB répond au healthcheck
+      timescaledb:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      # Monte le code source en direct (les modifications sont visibles immédiatement)
+      - ./backend:/app
+    networks:
+      - forest_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =========================================================
+  # FRONTEND ANGULAR/IONIC
+  # =========================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: forest_frontend
+    environment:
+      - API_URL=${API_URL}
+    depends_on:
+      - backend
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./frontend:/app
+      # Empêche l'écrasement du node_modules buildé dans le container
+      # par le node_modules local (souvent incompatible OS/arch)
+      - /app/node_modules
+    networks:
+      - forest_network
+    restart: unless-stopped
+
+  # =========================================================
+  # GRAFANA (tableaux de bord)
+  # =========================================================
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: forest_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      # Plugins utiles pour la cartographie et le monitoring IoT
+      GF_INSTALL_PLUGINS: grafana-worldmap-panel,grafana-clock-panel
+      # Désactive les analytics Grafana (optionnel)
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      # Passage du mot de passe DB aux datasources provisionnées
+      DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # Provisioning = configuration automatique au démarrage
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      # Fichiers JSON des dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - forest_network
+    restart: unless-stopped
+
+  # =========================================================
+  # NGINX (reverse proxy + SSL termination)
+  # =========================================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: forest_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Les certificats SSL sont montés ici (générés à l'étape 9)
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+      - grafana
+    networks:
+      - forest_network
+    restart: unless-stopped
+
+# =========================================================
+# VOLUMES PERSISTANTS
+# =========================================================
+volumes:
+  # Données PostgreSQL (survit aux suppressions de containers)
+  timescale_data:
+    driver: local
+  # Données Grafana (dashboards, utilisateurs, plugins)
+  grafana_data:
+    driver: local
+
+# =========================================================
+# RÉSEAU INTERNE
+# =========================================================
+networks:
+  forest_network:
+    driver: bridge
+    # Les services communiquent par leur nom (ex: "timescaledb", "backend")

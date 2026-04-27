@@ -1,0 +1,46 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "title": "Capteurs - État Technique",
+  "uid": "technical-sensors",
+  "version": 1,
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Capteurs par État",
+      "type": "piechart",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "TimescaleDB" },
+      "targets": [{
+        "rawSql": "SELECT status as metric, COUNT(*) as value FROM sensors GROUP BY status",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "Capteurs Batterie Faible (< 20%)",
+      "type": "table",
+      "gridPos": { "x": 8, "y": 0, "w": 16, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "TimescaleDB" },
+      "targets": [{
+        "rawSql": "SELECT s.uid as \"Identifiant\", s.battery_level as \"Batterie %\", fz.name as \"Zone\", s.last_seen as \"Dernière vue\" FROM sensors s LEFT JOIN forest_zones fz ON s.zone_id = fz.id WHERE s.battery_level < 20 ORDER BY s.battery_level ASC",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "Capteurs Hors Ligne (+ 2h)",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "TimescaleDB" },
+      "targets": [{
+        "rawSql": "SELECT uid as \"Identifiant\", last_seen as \"Dernière vue\", ROUND(EXTRACT(EPOCH FROM (NOW() - last_seen))/3600::numeric, 1) as \"Heures hors ligne\" FROM sensors WHERE last_seen < NOW() - INTERVAL '2 hours' OR last_seen IS NULL ORDER BY last_seen ASC NULLS FIRST",
+        "format": "table"
+      }]
+    }
+  ]
+}
