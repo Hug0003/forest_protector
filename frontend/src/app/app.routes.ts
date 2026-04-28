@@ -17,7 +17,7 @@ export const routes: Routes = [
   },
   {
     path: 'map',
-    loadChildren: () => import('./pages/map/map.module').then(m => m.MapPageModule)
+    loadComponent: () => import('./pages/map/map.page').then(m => m.MapPage)
   },
   {
     path: 'dashboard',

@@ -1,7 +1,11 @@
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+
 <ion-header>
   <ion-toolbar color="success">
     <ion-buttons slot="start">
-      <ion-button routerLink="/home">
+      <ion-button routerLink="/home" fill="clear" class="back-button">
         <ion-icon name="arrow-back"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -16,41 +20,23 @@
 
 <ion-content>
   <div class="map-wrapper">
-    <div #mapContainer class="map-container" *ngIf="!isLoading"></div>
-
-    <div class="loading-container" *ngIf="isLoading">
-      <ion-spinner color="success"></ion-spinner>
-      <p>Chargement de la carte...</p>
-    </div>
+    <div #mapContainer id="mapContainer"></div>
   </div>
 
-  <div class="sensors-panel">
-    <div class="panel-header">
-      <h3>Capteurs ({{ sensors.length }})</h3>
-    </div>
-
-    <div class="sensors-list">
-      <div *ngFor="let sensor of sensors" 
-           class="sensor-item" 
-           [class.selected]="selectedSensor?.id === sensor.id"
-           (click)="selectSensor(sensor)">
-        <div class="sensor-status" [style.background-color]="getStatusColor(sensor.status)"></div>
-        <div class="sensor-info">
-          <h4>{{ sensor.uid }}</h4>
-          <p class="zone-info">Zone {{ sensor.zone_id }}</p>
-          <div class="sensor-meta">
-            <span class="battery">🔋 {{ sensor.battery_level }}%</span>
-            <span class="seen">⏱️ {{ sensor.last_seen }}</span>
-          </div>
-        </div>
-        <ion-chip [color]="sensor.status === 'active' ? 'success' : sensor.status === 'alert' ? 'danger' : 'warning'">
-          {{ getStatusLabel(sensor.status) }}
-        </ion-chip>
+  <div class="selection-summary" *ngIf="selectedSensor">
+    <div class="summary-main">
+      <div>
+        <div class="summary-title">Capteur sélectionné</div>
+        <div class="summary-name">{{ selectedSensor.uid }}</div>
+        <div class="summary-meta">{{ getStatusLabel(selectedSensor.status) }} · Batterie {{ selectedSensor.battery_level }}%</div>
       </div>
+      <ion-button fill="solid" size="small" color="primary" (click)="toggleDetails()">
+        {{ showDetails ? 'Masquer' : 'Voir plus' }}
+      </ion-button>
     </div>
   </div>
 
-  <div class="sensor-detail" *ngIf="selectedSensor">
+  <div class="sensor-detail" *ngIf="selectedSensor && showDetails">
     <ion-card>
       <ion-card-header>
         <ion-card-title>{{ selectedSensor.uid }}</ion-card-title>
