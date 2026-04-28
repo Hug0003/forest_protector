@@ -1,0 +1,36 @@
+<ion-header>
+  <ion-toolbar color="success">
+    <ion-title>Carte des Capteurs</ion-title>
+    <ion-buttons slot="end">
+      <ion-button routerLink="/dashboard">
+        <ion-icon name="bar-chart-outline"></ion-icon>
+      </ion-button>
+      <ion-button (click)="applyFilters()">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="stats-bar">
+    <div class="stat active">
+      <span class="num">{{ stats.active }}</span>
+      <span class="lbl">Actifs</span>
+    </div>
+    <div class="stat offline">
+      <span class="num">{{ stats.offline }}</span>
+      <span class="lbl">Hors ligne</span>
+    </div>
+    <div class="stat alert">
+      <span class="num">{{ stats.alert }}</span>
+      <span class="lbl">Alertes</span>
+    </div>
+    <div class="stat total">
+      <span class="num">{{ stats.total }}</span>
+      <span class="lbl">Total</span>
+    </div>
+  </div>
+
+  <div id="map"></div>
+</ion-content>

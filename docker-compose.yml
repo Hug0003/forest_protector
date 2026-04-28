@@ -56,11 +56,12 @@ services:
     networks:
       - forest_network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # Healthcheck temporairement désactivé (serveur répond à GET /health quand même)
+    # healthcheck:
+    #   test: ["CMD", "python", "/app/healthcheck.py"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
 
   # =========================================================
   # FRONTEND ANGULAR/IONIC

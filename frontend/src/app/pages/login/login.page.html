@@ -1,0 +1,59 @@
+<!-- src/app/pages/login/login.page.html -->
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Connexion - Forest Monitoring</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="login-container">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Identification</ion-card-title>
+        <ion-card-subtitle>Accès réservé aux professionnels</ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-item>
+          <ion-label position="floating">Email</ion-label>
+          <ion-input 
+            type="email" 
+            [(ngModel)]="email"
+            placeholder="votre.email@exemple.com">
+          </ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="floating">Mot de passe</ion-label>
+          <ion-input 
+            type="password" 
+            [(ngModel)]="password"
+            placeholder="••••••••">
+          </ion-input>
+        </ion-item>
+
+        <ion-button 
+          expand="block" 
+          (click)="login()" 
+          class="ion-margin-top"
+          [disabled]="!email || !password">
+          Se connecter
+        </ion-button>
+
+        <!-- Bouton démo pour tester sans backend -->
+        <ion-button 
+          expand="block" 
+          fill="outline"
+          (click)="loginDemo()" 
+          class="ion-margin-top"
+          color="warning">
+          Mode Démo (Test)
+        </ion-button>
+
+        <ion-text color="medium" class="ion-text-center ion-margin-top">
+          <p>Accès pour : Gardes forestiers, Pompiers, Propriétaires</p>
+        </ion-text>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

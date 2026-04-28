@@ -1,0 +1,45 @@
+<ion-header>
+  <ion-toolbar color="success">
+    <ion-buttons slot="start">
+      <ion-button routerLink="/map">
+        <ion-icon name="map-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Tableau de Supervision</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="alert-bar" *ngIf="technicalStats.offline_count > 0 || technicalStats.low_battery_count > 0">
+    <ion-chip color="danger" *ngIf="technicalStats.offline_count > 0">
+      <ion-icon name="wifi-outline"></ion-icon>
+      {{ technicalStats.offline_count }} hors ligne
+    </ion-chip>
+    <ion-chip color="warning" *ngIf="technicalStats.low_battery_count > 0">
+      <ion-icon name="battery-dead-outline"></ion-icon>
+      {{ technicalStats.low_battery_count }} batterie faible
+    </ion-chip>
+  </div>
+
+  <div class="tab-bar">
+    <button
+      *ngFor="let key of ['technical', 'supervision', 'network']"
+      class="tab-btn"
+      [class.active]="activeDashboard === key"
+      (click)="toggleDashboard(key)">
+      {{ dashboardLabels[key] }}
+    </button>
+  </div>
+
+  <div class="loader" *ngIf="isLoading">
+    <ion-spinner name="crescent" color="success"></ion-spinner>
+    <p>Chargement...</p>
+  </div>
+
+  <iframe
+    [src]="dashboardUrl"
+    [class.hidden]="isLoading"
+    (load)="onIframeLoad()"
+    frameborder="0">
+  </iframe>
+</ion-content>
