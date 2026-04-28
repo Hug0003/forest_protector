@@ -19,8 +19,7 @@ import {
   IonItem,
   IonLabel,
   IonInput,
-  IonButton,
-  IonText
+  IonButton
 } from '@ionic/angular/standalone';
 
 @Component({
@@ -43,8 +42,7 @@ import {
     IonItem,
     IonLabel,
     IonInput,
-    IonButton,
-    IonText
+    IonButton
   ]
 })
 export class LoginPage {

@@ -1,10 +1,69 @@
 <ion-header>
-  <ion-toolbar>
-    <ion-title>History</ion-title>
+  <ion-toolbar color="success">
+    <ion-buttons slot="start">
+      <ion-button routerLink="/home">
+        <ion-icon name="arrow-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Historique</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="clearHistory()">
+        <ion-icon name="trash-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  <h1>Sensor History</h1>
-  <p>Historical data will be displayed here.</p>
+  <ion-searchbar placeholder="Rechercher..." [(ngModel)]="searchTerm" cancelButtonText="Annuler"></ion-searchbar>
+
+  <ion-segment value="all" (ionChange)="segmentChanged($event)">
+    <ion-segment-button value="all">Tous</ion-segment-button>
+    <ion-segment-button value="alert">Alertes</ion-segment-button>
+    <ion-segment-button value="offline">Hors ligne</ion-segment-button>
+    <ion-segment-button value="error">Erreurs</ion-segment-button>
+  </ion-segment>
+
+  <ion-list *ngIf="filteredEvents.length > 0">
+    <ion-item-divider>
+      <ion-label>{{ filteredEvents.length }} événement(s)</ion-label>
+    </ion-item-divider>
+
+    <ion-item-sliding *ngFor="let event of filteredEvents" #sliding>
+      <ion-item>
+        <ion-icon slot="start" [color]="getTypeColor(event.type)" name="alert-circle-outline"></ion-icon>
+        <ion-label>
+          <h2><strong>{{ event.sensor }}</strong></h2>
+          <p>{{ event.description }}</p>
+          <small color="medium">{{ formatTime(event.timestamp) }}</small>
+        </ion-label>
+        <ion-badge slot="end" [color]="getSeverityColor(event.severity)">
+          {{ event.severity }}
+        </ion-badge>
+        <ion-chip slot="end" [color]="getTypeColor(event.type)" size="small">
+          {{ getTypeLabel(event.type) }}
+        </ion-chip>
+      </ion-item>
+
+      <ion-item-options side="end">
+        <ion-item-option color="primary" (click)="sliding.close()">
+          <ion-icon name="open-outline"></ion-icon>
+          Détails
+        </ion-item-option>
+      </ion-item-options>
+    </ion-item-sliding>
+  </ion-list>
+
+  <div *ngIf="filteredEvents.length === 0" class="empty-state">
+    <ion-card>
+      <ion-card-content>
+        <ion-text color="medium">
+          <h3 style="text-align: center;">📭 Aucun événement</h3>
+          <p style="text-align: center;">
+            {{ searchTerm ? 'Aucun résultat pour votre recherche' : 'Pas d\'historique disponible' }}
+          </p>
+        </ion-text>
+      </ion-card-content>
+    </ion-card>
+  </div>
 </ion-content>
