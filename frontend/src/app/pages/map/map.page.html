@@ -5,9 +5,9 @@
         <ion-icon name="arrow-back"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>Carte des Capteurs</ion-title>
+    <ion-title>🗺️ Carte Interactive</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="loadSensors()">
+      <ion-button (click)="refresh()">
         <ion-icon name="refresh-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -15,59 +15,72 @@
 </ion-header>
 
 <ion-content>
-  <div class="map-container">
-    <div class="map-placeholder">
-      <ion-text color="medium">
-        <h2>🗺️ Carte Interactive</h2>
-        <p>Intégration Leaflet en cours de développement...</p>
-        <p>Consultez la liste des capteurs ci-dessous</p>
-      </ion-text>
+  <div class="map-wrapper">
+    <div #mapContainer class="map-container" *ngIf="!isLoading"></div>
+
+    <div class="loading-container" *ngIf="isLoading">
+      <ion-spinner color="success"></ion-spinner>
+      <p>Chargement de la carte...</p>
     </div>
   </div>
 
-  <div *ngIf="isLoading" class="loading">
-    <ion-spinner color="success"></ion-spinner>
-    <p>Chargement des capteurs...</p>
-  </div>
+  <div class="sensors-panel">
+    <div class="panel-header">
+      <h3>Capteurs ({{ sensors.length }})</h3>
+    </div>
 
-  <div *ngIf="!isLoading">
-    <ion-list>
-      <ion-item-divider>
-        <ion-label>Capteurs ({{ sensors.length }})</ion-label>
-      </ion-item-divider>
-
-      <ion-item *ngFor="let sensor of sensors" (click)="selectSensor(sensor)" 
-                 [class.selected]="selectedSensor?.id === sensor.id">
-        <ion-label>
-          <h2>{{ sensor.uid }}</h2>
-          <p>Zone {{ sensor.zone_id }} • Lat: {{ sensor.lat | number:'1.4' }} • Lng: {{ sensor.lng | number:'1.4' }}</p>
-        </ion-label>
-        <ion-chip slot="end" [color]="getStatusColor(sensor.status)">
+    <div class="sensors-list">
+      <div *ngFor="let sensor of sensors" 
+           class="sensor-item" 
+           [class.selected]="selectedSensor?.id === sensor.id"
+           (click)="selectSensor(sensor)">
+        <div class="sensor-status" [style.background-color]="getStatusColor(sensor.status)"></div>
+        <div class="sensor-info">
+          <h4>{{ sensor.uid }}</h4>
+          <p class="zone-info">Zone {{ sensor.zone_id }}</p>
+          <div class="sensor-meta">
+            <span class="battery">🔋 {{ sensor.battery_level }}%</span>
+            <span class="seen">⏱️ {{ sensor.last_seen }}</span>
+          </div>
+        </div>
+        <ion-chip [color]="sensor.status === 'active' ? 'success' : sensor.status === 'alert' ? 'danger' : 'warning'">
           {{ getStatusLabel(sensor.status) }}
         </ion-chip>
-        <ion-text slot="end" color="medium" *ngIf="sensor.battery_level !== undefined">
-          <small>🔋 {{ sensor.battery_level }}%</small>
-        </ion-text>
-      </ion-item>
-    </ion-list>
-
-    <div *ngIf="selectedSensor" class="sensor-details">
-      <ion-card>
-        <ion-card-content>
-          <ion-text>
-            <h3>{{ selectedSensor.uid }}</h3>
-            <p><strong>Status:</strong> {{ getStatusLabel(selectedSensor.status) }}</p>
-            <p><strong>Localisation:</strong> {{ selectedSensor.lat | number:'1.4' }}, {{ selectedSensor.lng | number:'1.4' }}</p>
-            <p><strong>Zone:</strong> {{ selectedSensor.zone_id }}</p>
-            <p *ngIf="selectedSensor.battery_level !== undefined">
-              <strong>Batterie:</strong> {{ selectedSensor.battery_level }}%
-            </p>
-            <p *ngIf="selectedSensor.last_seen">
-              <strong>Vu:</strong> {{ selectedSensor.last_seen }}
-            </p>
-          </ion-text>
-        </ion-card-content>
-      </ion-card>
+      </div>
     </div>
+  </div>
+
+  <div class="sensor-detail" *ngIf="selectedSensor">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{ selectedSensor.uid }}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Status</label>
+            <span [style.color]="getStatusColor(selectedSensor.status)">
+              ● {{ getStatusLabel(selectedSensor.status) }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Localisation</label>
+            <span>{{ selectedSensor.lat | number:'1.4' }}, {{ selectedSensor.lng | number:'1.4' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Zone</label>
+            <span>{{ selectedSensor.zone_id }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Batterie</label>
+            <span>{{ selectedSensor.battery_level }}%</span>
+          </div>
+          <div class="detail-item">
+            <label>Vu</label>
+            <span>{{ selectedSensor.last_seen }}</span>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
   </div>
 </ion-content>

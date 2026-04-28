@@ -4,7 +4,7 @@ import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent,
-  IonCard, IonCardContent, IonButton, IonIcon,
+  IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonButton, IonIcon,
   IonList, IonItem, IonLabel, IonToggle, IonText,
   IonInput, IonGrid, IonRow, IonCol, IonButtons,
   AlertController
@@ -21,7 +21,7 @@ import { AuthService } from '../../services/auth.service';
   imports: [
     CommonModule, RouterLink, FormsModule,
     IonHeader, IonToolbar, IonTitle, IonContent,
-    IonCard, IonCardContent, IonButton, IonIcon,
+    IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonButton, IonIcon,
     IonList, IonItem, IonLabel, IonToggle, IonText,
     IonInput, IonGrid, IonRow, IonCol, IonButtons
   ]

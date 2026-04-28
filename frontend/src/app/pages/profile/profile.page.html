@@ -5,119 +5,116 @@
         <ion-icon name="arrow-back"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>Profil</ion-title>
+    <ion-title>👤 Profil</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-  <!-- SECTION PROFIL -->
-  <ion-card>
-    <ion-card-content>
-      <ion-text>
-        <h2 style="text-align: center;">👤 Mon Profil</h2>
-      </ion-text>
-      <ion-grid>
-        <ion-row>
-          <ion-col size="12">
-            <ion-item>
-              <ion-label position="stacked">Email</ion-label>
-              <ion-input type="email" [(ngModel)]="user.email" disabled></ion-input>
-            </ion-item>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <ion-col size="12">
-            <ion-item>
-              <ion-label position="stacked">Nom</ion-label>
-              <ion-input [(ngModel)]="user.name" disabled></ion-input>
-            </ion-item>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <ion-col size="12">
-            <ion-item>
-              <ion-label position="stacked">Rôle</ion-label>
-              <ion-input [(ngModel)]="user.role" disabled></ion-input>
-            </ion-item>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <ion-col size="12">
-            <ion-item>
-              <ion-label position="stacked">Organisation</ion-label>
-              <ion-input [(ngModel)]="user.organization" disabled></ion-input>
-            </ion-item>
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-    </ion-card-content>
-  </ion-card>
+  <!-- Profile Header -->
+  <div class="profile-header">
+    <div class="profile-avatar">👤</div>
+    <h1>{{ user.name }}</h1>
+    <p>{{ user.role }} • {{ user.organization }}</p>
+  </div>
 
-  <!-- SECTION PARAMÈTRES -->
-  <ion-card>
-    <ion-card-content>
-      <ion-text>
-        <h3>⚙️ Paramètres</h3>
-      </ion-text>
-      <ion-list>
-        <ion-item>
-          <ion-label>Notifications Push</ion-label>
-          <ion-toggle slot="end" [(ngModel)]="settings.notifications" (ionChange)="saveSettings()"></ion-toggle>
-        </ion-item>
-        <ion-item>
-          <ion-label>Alertes par Email</ion-label>
-          <ion-toggle slot="end" [(ngModel)]="settings.emailAlerts" (ionChange)="saveSettings()"></ion-toggle>
-        </ion-item>
-        <ion-item>
-          <ion-label>Mode Sombre</ion-label>
-          <ion-toggle slot="end" [(ngModel)]="settings.darkMode" (ionChange)="saveSettings()"></ion-toggle>
-        </ion-item>
-        <ion-item>
-          <ion-label>Actualisation Automatique</ion-label>
-          <ion-toggle slot="end" [(ngModel)]="settings.autoRefresh" (ionChange)="saveSettings()"></ion-toggle>
-        </ion-item>
-      </ion-list>
-    </ion-card-content>
-  </ion-card>
+  <div class="sections">
+    <!-- User Information Card -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>📋 Informations Personnelles</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="user-info">
+          <ion-item>
+            <ion-label position="stacked">Email</ion-label>
+            <ion-input type="email" [(ngModel)]="user.email" disabled></ion-input>
+          </ion-item>
 
-  <!-- SECTION ACTIONS -->
-  <ion-card>
-    <ion-card-content>
-      <ion-grid>
-        <ion-row>
-          <ion-col size="12">
-            <ion-button expand="block" color="primary" (click)="changePassword()">
-              <ion-icon slot="start" name="lock-closed-outline"></ion-icon>
-              Changer le Mot de Passe
-            </ion-button>
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-    </ion-card-content>
-  </ion-card>
+          <ion-item>
+            <ion-label position="stacked">Nom</ion-label>
+            <ion-input [(ngModel)]="user.name" disabled></ion-input>
+          </ion-item>
 
-  <!-- SECTION DÉCONNEXION -->
-  <ion-card color="light">
-    <ion-card-content>
-      <ion-button expand="block" color="danger" (click)="logout()">
-        <ion-icon slot="start" name="log-out-outline"></ion-icon>
-        Déconnexion
-      </ion-button>
-    </ion-card-content>
-  </ion-card>
+          <ion-item>
+            <ion-label position="stacked">Rôle</ion-label>
+            <ion-input [(ngModel)]="user.role" disabled></ion-input>
+          </ion-item>
 
-  <!-- SECTION INFO -->
-  <ion-card color="light">
-    <ion-card-content>
-      <ion-text color="medium">
-        <small>
-          <p style="text-align: center;">
-            <strong>Forest Monitoring System</strong><br>
-            Version 1.0.0<br>
-            © 2024 - Tous droits réservés
-          </p>
-        </small>
-      </ion-text>
-    </ion-card-content>
-  </ion-card>
+          <ion-item>
+            <ion-label position="stacked">Organisation</ion-label>
+            <ion-input [(ngModel)]="user.organization" disabled></ion-input>
+          </ion-item>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Settings Card -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>⚙️ Paramètres</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="settings-section">
+          <ion-list>
+            <ion-item>
+              <ion-label>Notifications Push</ion-label>
+              <ion-toggle slot="end" [(ngModel)]="settings.notifications" (ionChange)="saveSettings()"></ion-toggle>
+            </ion-item>
+
+            <ion-item>
+              <ion-label>Alertes par Email</ion-label>
+              <ion-toggle slot="end" [(ngModel)]="settings.emailAlerts" (ionChange)="saveSettings()"></ion-toggle>
+            </ion-item>
+
+            <ion-item>
+              <ion-label>Mode Sombre</ion-label>
+              <ion-toggle slot="end" [(ngModel)]="settings.darkMode" (ionChange)="saveSettings()"></ion-toggle>
+            </ion-item>
+
+            <ion-item>
+              <ion-label>Actualisation Automatique</ion-label>
+              <ion-toggle slot="end" [(ngModel)]="settings.autoRefresh" (ionChange)="saveSettings()"></ion-toggle>
+            </ion-item>
+          </ion-list>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Actions Card -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>🔒 Sécurité</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="actions-section">
+          <ion-button expand="block" color="primary" (click)="changePassword()">
+            <ion-icon slot="start" name="lock-closed-outline"></ion-icon>
+            Changer le Mot de Passe
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Logout Card -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Compte</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="actions-section">
+          <ion-button expand="block" color="danger" (click)="logout()">
+            <ion-icon slot="start" name="log-out-outline"></ion-icon>
+            Déconnexion
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Info Card -->
+    <div class="info-section">
+      <p><strong>Forest Monitoring System</strong></p>
+      <p>Version 1.0.0</p>
+      <p>© 2024 - Tous droits réservés</p>
+    </div>
+  </div>
 </ion-content>
