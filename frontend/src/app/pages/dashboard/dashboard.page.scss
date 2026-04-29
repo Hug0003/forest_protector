@@ -6,10 +6,10 @@ ion-content {
 }
 
 .dashboard-header {
-  background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%);
+  background: linear-gradient(135deg,#0066cc 0%,#0052a3 100%);
   color: white;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.2);
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(0,102,204,0.18);
 
   h2 {
     margin: 0 0 4px 0;
@@ -92,19 +92,7 @@ ion-content {
 }
 
 .tab-content {
-  padding: 16px;
-  animation: fadeIn 0.3s ease;
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  padding: 12px;
 }
 
 .stats-grid {
@@ -113,17 +101,14 @@ ion-content {
   gap: 12px;
   margin-bottom: 16px;
 
-  .stat-card {
+    .stat-card {
     background: white;
-    border-radius: 12px;
-    padding: 14px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: transform .24s ease,box-shadow .24s ease;
 
-    &:hover {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-      transform: translateY(-2px);
-    }
+    &:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.10); transform: translateY(-2px); }
 
     .stat-label {
       font-size: 11px;
@@ -198,17 +183,15 @@ ion-content {
     flex-direction: column;
     gap: 8px;
 
-    .alert-item {
+      .alert-item {
       background: white;
       border-left: 4px solid #ffc409;
       border-radius: 8px;
-      padding: 12px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-      transition: all 0.2s ease;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      transition: box-shadow .18s ease;
 
-      &:hover {
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      }
+      &:hover { box-shadow: 0 6px 10px rgba(0,0,0,0.08); }
 
       &.critical {
         border-left-color: #f04545;
@@ -245,31 +228,16 @@ ion-content {
   flex-direction: column;
   gap: 12px;
 
-  .grafana-placeholder {
+    .grafana-placeholder {
     background: white;
-    border-radius: 12px;
-    padding: 32px 16px;
+    border-radius: 10px;
+    padding: 20px 12px;
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 
-    ion-icon {
-      font-size: 48px;
-      color: #0066cc;
-      margin-bottom: 12px;
-    }
-
-    .placeholder-text {
-      font-size: 14px;
-      font-weight: 600;
-      color: #333;
-      margin: 0 0 8px 0;
-    }
-
-    .placeholder-hint {
-      font-size: 12px;
-      color: #999;
-      margin: 0;
-    }
+    ion-icon { font-size: 40px; color: #0066cc; margin-bottom: 8px; }
+    .placeholder-text { font-size: 13px; font-weight:600; color:#333; margin:0 0 6px 0 }
+    .placeholder-hint { font-size:12px; color:#999; margin:0 }
   }
 
   ion-button {
@@ -278,22 +246,9 @@ ion-content {
 }
 
 .loader {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: #999;
-
-  ion-spinner {
-    --color: #0066cc;
-    margin-bottom: 12px;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
+  display:flex;align-items:center;justify-content:center;height:160px;color:#999;flex-direction:column;
+  ion-spinner{--color:#0066cc;margin-bottom:8px}
+  p{margin:0;font-size:13px}
 }
 
 iframe {
