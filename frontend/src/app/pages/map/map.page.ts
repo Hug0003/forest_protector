@@ -11,7 +11,7 @@ import {
   refreshOutline, addOutline, closeOutline,
   leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
   trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline,
-  chevronUpOutline, chevronDownOutline
+  chevronUpOutline, chevronDownOutline, gridOutline
 } from "ionicons/icons";
 import * as L from "leaflet";
 import "leaflet-draw";
@@ -77,6 +77,7 @@ export class MapPage implements OnInit, AfterViewInit {
   propagationWeatherWindDirectionDeg: number | null = null;
   propagationWeatherHumidityPct: number | null = null;
   bottomPanelsCollapsed = false;
+  autoPlacingInProgress = false;
   readonly SENSOR_DETECTION_RADIUS_M = 1500;
 
   // Dessin polygone
@@ -112,7 +113,7 @@ export class MapPage implements OnInit, AfterViewInit {
       refreshOutline, addOutline, closeOutline,
       leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
       trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline,
-      chevronUpOutline, chevronDownOutline
+      chevronUpOutline, chevronDownOutline, gridOutline
     });
   }
 
@@ -876,6 +877,125 @@ export class MapPage implements OnInit, AfterViewInit {
   clearSensorMarkers() {
     this.sensorMarkers.forEach(m => this.map.removeLayer(m));
     this.sensorMarkers.clear();
+  }
+
+  // ============================================================
+  // AUTO-PLACEMENT EN GRILLE HEXAGONALE
+  // ============================================================
+  async autoPlaceSensors() {
+    if (!this.selectedForest) return;
+
+    const forest = this.selectedForest;
+    const layer = this.forestLayers.get(forest.id) as L.GeoJSON;
+    if (!layer) {
+      this.showToast('Impossible de récupérer la géométrie de la forêt.');
+      return;
+    }
+
+    const bounds = layer.getBounds();
+    const SPACING_M = 150;    // Distance entre capteurs voisins
+    const EARTH_RADIUS = 6371000;
+
+    // Convertir un écart en mètres en degrés lat/lng
+    const latStepDeg = (SPACING_M / EARTH_RADIUS) * (180 / Math.PI);
+    const centerLat = (bounds.getNorth() + bounds.getSouth()) / 2;
+    const lngStepDeg = (SPACING_M / EARTH_RADIUS) * (180 / Math.PI) / Math.cos(centerLat * Math.PI / 180);
+
+    // Construire la liste de points en grille hexagonale décalée
+    const candidatePoints: { lat: number; lng: number }[] = [];
+    let rowIndex = 0;
+    for (let lat = bounds.getSouth(); lat <= bounds.getNorth() + latStepDeg; lat += latStepDeg) {
+      const offset = (rowIndex % 2 === 0) ? 0 : lngStepDeg / 2;
+      for (let lng = bounds.getWest() + offset; lng <= bounds.getEast() + lngStepDeg; lng += lngStepDeg) {
+        candidatePoints.push({ lat, lng });
+      }
+      rowIndex++;
+    }
+
+    // Filtrer les points qui sont à l'intérieur de la forêt (via Leaflet bounds + GeoJSON)
+    const geojson = forest.geojson;
+    if (!geojson) {
+      this.showToast('GeoJSON de la forêt manquant.');
+      return;
+    }
+
+    const insidePoints = candidatePoints.filter(pt => {
+      return this.isPointInPolygon(pt.lat, pt.lng, geojson.coordinates[0] as number[][]);
+    });
+
+    if (insidePoints.length === 0) {
+      this.showToast('Aucun point valide trouvé dans la forêt. Essayez une forêt plus grande.');
+      return;
+    }
+
+    this.autoPlacingInProgress = true;
+    let placed = 0;
+    let errors = 0;
+
+    for (const pt of insidePoints) {
+      try {
+        const uid = `CO2-${Date.now().toString().slice(-5)}-${placed + 1}`;
+        const created = await this.forestService.createSensor({
+          uid,
+          sensor_type_id: 1,
+          forest_id: forest.id,
+          lat: pt.lat,
+          lng: pt.lng,
+          notes: 'Capteur CO₂ — déploiement automatique'
+        });
+
+        const marker = L.marker([created.lat, created.lng], {
+          icon: this.getMarkerIcon('active')
+        })
+          .bindPopup(`<b>${created.uid}</b><br>CO₂ — Actif`)
+          .addTo(this.map);
+        this.sensorMarkers.set(created.id, marker);
+
+        if (this.selectedForest?.sensors) {
+          this.selectedForest.sensors.push(created);
+        }
+
+        // Cercle de couverture visible (200m)
+        if (this.alertOverlays) {
+          L.circle([created.lat, created.lng], {
+            radius: 200,
+            color: '#2dd36f',
+            weight: 1,
+            fillColor: '#2dd36f',
+            fillOpacity: 0.05,
+            dashArray: '4 4'
+          }).addTo(this.alertOverlays);
+        }
+
+        placed++;
+        // Petite pause pour ne pas saturer l'API
+        await new Promise(r => setTimeout(r, 80));
+      } catch {
+        errors++;
+      }
+    }
+
+    this.autoPlacingInProgress = false;
+    const msg = errors > 0
+      ? `${placed} capteur(s) déployé(s), ${errors} erreur(s) (points hors forêt ignorés).`
+      : `✅ ${placed} capteur(s) CO₂ déployés en grille hexagonale (200m de portée, ~150m d'espacement).`;
+    this.showToast(msg, errors > 0 ? 'warning' : 'success');
+  }
+
+  /**
+   * Vérifie si un point (lat, lng) est à l'intérieur d'un polygone GeoJSON [lng, lat][].
+   * Algorithme Ray-Casting.
+   */
+  isPointInPolygon(lat: number, lng: number, ring: number[][]): boolean {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1]; // lng, lat
+      const xj = ring[j][0], yj = ring[j][1];
+      const intersect = ((yi > lat) !== (yj > lat)) &&
+        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
   }
 
   startPlaceSensor() {

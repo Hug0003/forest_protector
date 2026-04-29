@@ -40,6 +40,10 @@
       <ion-icon name="hardware-chip-outline"></ion-icon>
       Placer un capteur
     </button>
+    <button class="action-btn primary" (click)="autoPlaceSensors()" [disabled]="autoPlacingInProgress">
+      <ion-icon name="grid-outline"></ion-icon>
+      {{ autoPlacingInProgress ? 'Déploiement...' : 'Couvrir automatiquement' }}
+    </button>
     <button class="action-btn warning" (click)="simulateFire()">
       <ion-icon name="flame-outline"></ion-icon>
       Simuler un feu
