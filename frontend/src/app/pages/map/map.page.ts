@@ -11,7 +11,7 @@ import {
   refreshOutline, addOutline, closeOutline,
   leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
   trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline,
-  chevronUpOutline, chevronDownOutline, gridOutline
+  chevronUpOutline, chevronDownOutline
 } from "ionicons/icons";
 import * as L from "leaflet";
 import "leaflet-draw";
@@ -77,7 +77,6 @@ export class MapPage implements OnInit, AfterViewInit {
   propagationWeatherWindDirectionDeg: number | null = null;
   propagationWeatherHumidityPct: number | null = null;
   bottomPanelsCollapsed = false;
-  autoPlacingInProgress = false;
   readonly SENSOR_DETECTION_RADIUS_M = 1500;
 
   // Dessin polygone
@@ -113,7 +112,7 @@ export class MapPage implements OnInit, AfterViewInit {
       refreshOutline, addOutline, closeOutline,
       leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
       trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline,
-      chevronUpOutline, chevronDownOutline, gridOutline
+      chevronUpOutline, chevronDownOutline
     });
   }
 
@@ -878,100 +877,6 @@ export class MapPage implements OnInit, AfterViewInit {
     this.sensorMarkers.forEach(m => this.map.removeLayer(m));
     this.sensorMarkers.clear();
   }
-
-  // ============================================================
-  // AUTO-PLACEMENT EN GRILLE HEXAGONALE
-  // ============================================================
-  async autoPlaceSensors() {
-    if (!this.selectedForest) return;
-
-    const forest = this.selectedForest;
-    const layer = this.forestLayers.get(forest.id) as L.GeoJSON;
-    if (!layer) {
-      this.showToast('Impossible de récupérer la géométrie de la forêt.');
-      return;
-    }
-
-    const bounds = layer.getBounds();
-    const SPACING_M = 150;
-    const EARTH_RADIUS = 6371000;
-
-    const latStepDeg = (SPACING_M / EARTH_RADIUS) * (180 / Math.PI);
-    const centerLat = (bounds.getNorth() + bounds.getSouth()) / 2;
-    const lngStepDeg = (SPACING_M / EARTH_RADIUS) * (180 / Math.PI) / Math.cos(centerLat * Math.PI / 180);
-
-    // Grille hexagonale décalée couvrant le bounding-box entier
-    const candidatePoints: { lat: number; lng: number }[] = [];
-    let rowIndex = 0;
-    for (let lat = bounds.getSouth(); lat <= bounds.getNorth() + latStepDeg; lat += latStepDeg) {
-      const offset = (rowIndex % 2 === 0) ? 0 : lngStepDeg / 2;
-      for (let lng = bounds.getWest() + offset; lng <= bounds.getEast() + lngStepDeg; lng += lngStepDeg) {
-        candidatePoints.push({ lat, lng });
-      }
-      rowIndex++;
-    }
-
-    if (candidatePoints.length === 0) {
-      this.showToast('La forêt est trop petite pour un déploiement automatique.');
-      return;
-    }
-
-    this.autoPlacingInProgress = true;
-    let placed = 0;
-
-    for (let i = 0; i < candidatePoints.length; i++) {
-      const pt = candidatePoints[i];
-      try {
-        const uid = `CO2-${(placed + 1).toString().padStart(3, '0')}`;
-        const created = await this.forestService.createSensor({
-          uid,
-          sensor_type_id: 1,
-          forest_id: forest.id,
-          lat: pt.lat,
-          lng: pt.lng,
-          notes: 'Capteur CO₂ — déploiement automatique'
-        });
-
-        const marker = L.marker([created.lat, created.lng], {
-          icon: this.getMarkerIcon('active')
-        })
-          .bindPopup(`<b>${created.uid}</b><br>CO₂ — Actif`)
-          .addTo(this.map);
-        this.sensorMarkers.set(created.id, marker);
-
-        if (this.selectedForest?.sensors) {
-          this.selectedForest.sensors.push(created);
-        }
-
-        // Cercle de couverture visible (200m)
-        if (this.alertOverlays) {
-          L.circle([created.lat, created.lng], {
-            radius: 200,
-            color: '#2dd36f',
-            weight: 1,
-            fillColor: '#2dd36f',
-            fillOpacity: 0.06,
-            dashArray: '4 4'
-          }).addTo(this.alertOverlays);
-        }
-
-        placed++;
-        await new Promise(r => setTimeout(r, 60));
-      } catch {
-        // Point hors forêt — ignoré silencieusement (ST_Contains côté backend)
-      }
-    }
-
-    this.autoPlacingInProgress = false;
-
-    if (placed === 0) {
-      this.showToast('Aucun capteur placé. Vérifiez que la forêt est bien dessinée.', 'warning');
-    } else {
-      this.showToast(`✅ ${placed} capteur(s) CO₂ déployés (portée 200m, espacement ~150m).`, 'success');
-    }
-  }
-
-  startPlaceSensor() {
 
   startPlaceSensor() {
     if (!this.selectedForest) return;
