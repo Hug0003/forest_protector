@@ -6,6 +6,7 @@ import json
 
 from app.database import get_db
 from app.schemas.forest import ForestCreate, SensorCreate
+from app.services.email_service import EmailService
 
 router = APIRouter()
 
@@ -327,8 +328,16 @@ async def simulate_fire(forest_id: int, db: AsyncSession = Depends(get_db)):
                 "metric_value": 92.0,
             }
         )
-
     await db.commit()
+
+    # Envoi de l'alerte par email
+    if affected_sensors:
+        first_sensor = affected_sensors[0]
+        EmailService.send_fire_alert(
+            forest_name=forest.name,
+            sensor_uid=first_sensor.uid,
+            location={"lat": fire_point_lat, "lng": fire_point_lng}
+        )
 
     return {
         "forest_id": forest.id,
