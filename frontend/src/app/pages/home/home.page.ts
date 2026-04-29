@@ -17,8 +17,7 @@ import { SensorService } from '../../services/sensor.service';
   standalone: true,
   imports: [
     CommonModule, RouterLink,
-    IonContent, IonHeader, IonTitle, IonToolbar,
-    IonIcon, IonSpinner
+    IonContent, IonIcon, IonSpinner
   ]
 })
 export class HomePage implements OnInit {
@@ -50,6 +49,17 @@ export class HomePage implements OnInit {
       this.activeSensors = sensors.filter(s => s.status === 'active').length;
       this.alertsCount = sensors.filter(s => s.status === 'alert').length;
       this.offlineSensors = sensors.filter(s => s.status === 'offline').length;
+      
+      // Simulation ou récupération des alertes récentes
+      this.recentAlerts = sensors
+        .filter(s => s.status === 'alert')
+        .slice(0, 3)
+        .map(s => ({
+          title: `Alerte ${s.uid}`,
+          message: 'Détection anormale - vérifier zone',
+          severity: 'critical',
+          time: 'Récemment'
+        }));
     } catch (error) {
       console.error('Erreur chargement capteurs:', error);
       this.totalSensors = 0;
