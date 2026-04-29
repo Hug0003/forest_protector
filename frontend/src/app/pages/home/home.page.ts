@@ -33,7 +33,16 @@ export class HomePage implements OnInit {
     addIcons({ mapOutline, barChartOutline, alertCircleOutline, settingsOutline });
   }
 
-  async ngOnInit() {
+  ngOnInit() {
+    // Initial load
+  }
+
+  async ionViewWillEnter() {
+    await this.loadData();
+  }
+
+  async loadData() {
+    this.isLoading = true;
     try {
       const allSensors = await this.sensorService.getSensors();
       const sensors = allSensors.filter(s => s.status !== 'maintenance' && s.status !== 'stolen');
@@ -41,11 +50,8 @@ export class HomePage implements OnInit {
       this.activeSensors = sensors.filter(s => s.status === 'active').length;
       this.alertsCount = sensors.filter(s => s.status === 'alert').length;
       this.offlineSensors = sensors.filter(s => s.status === 'offline').length;
-
-      // Aucune alerte fictive — les vraies alertes sont dans la page Historique
     } catch (error) {
       console.error('Erreur chargement capteurs:', error);
-      // Mode démo
       this.totalSensors = 0;
       this.activeSensors = 0;
       this.alertsCount = 0;
