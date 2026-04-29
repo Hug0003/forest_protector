@@ -97,17 +97,12 @@ class FirePredictionService:
         if payload.fuel_moisture_pct is not None:
             fuel_pressure = max(0.15, (100.0 - payload.fuel_moisture_pct) / 100.0)
 
-        wind_pressure = max(0.15, payload.wind_speed_kmh / 35.0)
-        spread_speed = (
-            3.0
-            + (wind_pressure * 11.0)
-            + (humidity_pressure * 7.0)
-            + (fuel_pressure * 4.0)
-        )
+        wind_pressure = min(0.25, payload.wind_speed_kmh / 180.0)
+        spread_speed = 1.25 + wind_pressure + (humidity_pressure * 0.12) + (fuel_pressure * 0.08)
         spread_speed *= _weather_factor(payload.weather)
         spread_speed *= _temperature_factor(payload.temperature_c)
         spread_speed *= _forest_factor(payload.forest_type)
-        spread_speed = round(max(0.5, spread_speed), 1)
+        spread_speed = round(max(1.0, min(1.8, spread_speed)), 1)
 
         spread_direction = _normalize_degrees(
             payload.wind_direction_deg + (12.0 if humidity_pressure > 0.45 else 5.0)
@@ -139,13 +134,6 @@ class FirePredictionService:
         else:
             risk_level = "low"
 
-        confidence = 0.62
-        if payload.fuel_moisture_pct is not None:
-            confidence += 0.08
-        confidence += min(0.14, payload.wind_speed_kmh / 100.0)
-        confidence -= min(0.12, payload.forest_humidity_pct / 200.0)
-        confidence = round(max(0.35, min(0.93, confidence)), 2)
-
         return {
             "predicted_spread_direction_deg": round(spread_direction, 1),
             "predicted_spread_direction_label": spread_direction_label,
@@ -153,7 +141,6 @@ class FirePredictionService:
             "predicted_spread_speed_m_per_h": round(spread_speed * 1000.0, 1),
             "estimated_distance_m": round(estimated_distance * 1000, 1),
             "predicted_affected_zone": f"Zone sous le vent vers {spread_direction_label}",
-            "confidence": confidence,
             "risk_level": risk_level,
             "explanation": (
                 f"La propagation est estimée depuis {payload.origin_zone} vers {spread_direction_label} "

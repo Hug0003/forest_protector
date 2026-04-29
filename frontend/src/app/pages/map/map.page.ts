@@ -10,7 +10,8 @@ import { addIcons } from "ionicons";
 import {
   refreshOutline, addOutline, closeOutline,
   leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
-  trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline
+  trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline,
+  chevronUpOutline, chevronDownOutline
 } from "ionicons/icons";
 import * as L from "leaflet";
 import "leaflet-draw";
@@ -63,6 +64,7 @@ export class MapPage implements OnInit, AfterViewInit {
   propagationOverlay: L.LayerGroup | null = null;
   propagationTrail: L.Polyline | null = null;
   propagationFrontMarker: L.CircleMarker | null = null;
+  propagationCone: L.Polygon | null = null;
   propagationTimer: ReturnType<typeof setInterval> | null = null;
   propagationElapsedMinutes = 0;
   propagationTimeScaleMinutesPerSecond = 15;
@@ -74,6 +76,7 @@ export class MapPage implements OnInit, AfterViewInit {
   propagationWeatherWindSpeedKmh: number | null = null;
   propagationWeatherWindDirectionDeg: number | null = null;
   propagationWeatherHumidityPct: number | null = null;
+  bottomPanelsCollapsed = false;
   readonly SENSOR_DETECTION_RADIUS_M = 1500;
 
   // Dessin polygone
@@ -108,8 +111,13 @@ export class MapPage implements OnInit, AfterViewInit {
     addIcons({
       refreshOutline, addOutline, closeOutline,
       leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
-      trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline
+      trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline,
+      chevronUpOutline, chevronDownOutline
     });
+  }
+
+  toggleBottomPanels() {
+    this.bottomPanelsCollapsed = !this.bottomPanelsCollapsed;
   }
 
   async showToast(message: string, color: string = 'danger') {
@@ -244,6 +252,7 @@ export class MapPage implements OnInit, AfterViewInit {
 
     this.propagationTrail = null;
     this.propagationFrontMarker = null;
+    this.propagationCone = null;
     this.propagationResult = null;
     this.propagationSimulationActive = false;
     this.propagationElapsedMinutes = 0;
@@ -318,7 +327,7 @@ export class MapPage implements OnInit, AfterViewInit {
       }, 1000);
 
       this.showToast(
-        `Propagation lancée: ${prediction.predicted_spread_direction_label} à ${prediction.predicted_spread_speed_m_per_h.toFixed(0)} m/h sur ${prediction.time_horizon_minutes} min.`,
+        `Propagation lancée: ${prediction.predicted_spread_direction_label} à ${prediction.predicted_spread_speed_kmh.toFixed(1)} km/h sur ${prediction.time_horizon_minutes} min.`,
         "warning"
       );
     } catch (err: any) {
@@ -340,6 +349,7 @@ export class MapPage implements OnInit, AfterViewInit {
 
     this.propagationTrail = null;
     this.propagationFrontMarker = null;
+    this.propagationCone = null;
     this.propagationSimulationActive = false;
     this.propagationElapsedMinutes = 0;
     this.propagationCurrentDistanceM = 0;
@@ -379,8 +389,7 @@ export class MapPage implements OnInit, AfterViewInit {
       fillOpacity: 1,
     }).addTo(this.propagationOverlay);
 
-    L.circle([this.propagationOriginPoint.lat, this.propagationOriginPoint.lng], {
-      radius: 80,
+    this.propagationCone = L.polygon(this.getPropagationConeLatLngs(80), {
       color: "#ffb300",
       weight: 2,
       fillColor: "#ffb300",
@@ -403,29 +412,47 @@ export class MapPage implements OnInit, AfterViewInit {
     this.propagationTrail.setLatLngs(path);
     this.propagationFrontMarker.setLatLng([this.propagationCurrentPoint.lat, this.propagationCurrentPoint.lng]);
 
-    const existingFrontCircle = this.propagationOverlay.getLayers().find(layer => (layer as any).__propagationFrontCircle) as L.Circle | undefined;
-    if (existingFrontCircle) {
-      existingFrontCircle.setRadius(this.propagationCurrentDistanceM);
+    const coneLatLngs = this.getPropagationConeLatLngs(this.propagationCurrentDistanceM);
+    if (this.propagationCone) {
+      this.propagationCone.setLatLngs(coneLatLngs);
     } else {
-      const frontCircle = L.circle([this.propagationOriginPoint.lat, this.propagationOriginPoint.lng], {
-        radius: this.propagationCurrentDistanceM,
+      this.propagationCone = L.polygon(coneLatLngs, {
         color: "#ff7a18",
         weight: 2,
         fillColor: "#ff7a18",
         fillOpacity: 0.08,
-      }) as L.Circle;
-      (frontCircle as any).__propagationFrontCircle = true;
-      frontCircle.addTo(this.propagationOverlay);
+      }).addTo(this.propagationOverlay);
     }
   }
 
   getPropagationStatusLabel(): string {
     if (!this.propagationResult) return "En attente";
-    return `${this.propagationResult.predicted_spread_direction_label} - ${this.propagationResult.predicted_spread_speed_m_per_h.toFixed(0)} m/h`;
+    return `${this.propagationResult.predicted_spread_direction_label} - ${this.propagationResult.predicted_spread_speed_kmh.toFixed(1)} km/h`;
   }
 
   getPropagationElapsedLabel(): string {
     return `${this.propagationElapsedMinutes} min`;
+  }
+
+  getPropagationConeLatLngs(distanceMeters: number): L.LatLngExpression[] {
+    if (!this.propagationOriginPoint || !this.propagationResult) return [];
+
+    const origin = this.propagationOriginPoint;
+    const direction = this.propagationResult.predicted_spread_direction_deg;
+    const halfAngle = 22.5;
+    const segments = 10;
+    const radius = Math.max(distanceMeters, 80);
+    const arcPoints: L.LatLngExpression[] = [];
+
+    for (let index = 0; index <= segments; index++) {
+      const angle = direction - halfAngle + (index / segments) * (halfAngle * 2);
+      arcPoints.push(this.projectPoint(origin, angle, radius));
+    }
+
+    return [
+      [origin.lat, origin.lng],
+      ...arcPoints,
+    ];
   }
 
   buildRandomPropagationConditions(): FireSpreadPredictionRequest {

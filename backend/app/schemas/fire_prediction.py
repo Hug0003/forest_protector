@@ -31,7 +31,6 @@ class FireSpreadPredictionResponse(BaseModel):
     predicted_spread_speed_m_per_h: float
     estimated_distance_m: float
     predicted_affected_zone: str
-    confidence: float
     risk_level: str
     time_horizon_minutes: int
     explanation: str

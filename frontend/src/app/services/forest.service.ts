@@ -74,7 +74,6 @@ export interface FireSpreadPredictionResult {
   predicted_spread_speed_m_per_h: number;
   estimated_distance_m: number;
   predicted_affected_zone: string;
-  confidence: number;
   risk_level: string;
   time_horizon_minutes: number;
   explanation: string;

@@ -68,98 +68,102 @@
 <div #mapContainer id="mapContainer"></div>
 
 <!-- Panneau scrollable -->
-<div class="panels-area">
+<div class="panels-area" [class.collapsed]="bottomPanelsCollapsed">
+  <button class="panels-toggle" type="button" (click)="toggleBottomPanels()">
+    <span>{{ bottomPanelsCollapsed ? 'Afficher' : 'Masquer' }}</span>
+    <ion-icon [name]="bottomPanelsCollapsed ? 'chevron-up-outline' : 'chevron-down-outline'"></ion-icon>
+  </button>
 
-  <!-- Capteurs de la foret selectionnee -->
-  <div *ngIf="selectedForest">
-    <div class="panel-header">
-      <h3>Capteurs <ion-badge color="success">{{ selectedForest.sensors?.length || 0 }}</ion-badge></h3>
-    </div>
-    <div *ngIf="!selectedForest.sensors?.length" class="empty-state">
-      Aucun capteur - cliquez "Placer un capteur"
-    </div>
-    <div *ngFor="let sensor of selectedForest.sensors"
-         class="sensor-item"
-         [class.selected]="selectedSensor?.id === sensor.id"
-         (click)="selectSensor(sensor)">
-      <div class="sensor-dot" [style.background]="getStatusColor(sensor.status)"></div>
-      <div class="sensor-info">
-        <h4>{{ sensor.uid }}</h4>
-        <p>{{ getStatusLabel(sensor.status) }}</p>
+  <div class="panels-content" *ngIf="!bottomPanelsCollapsed">
+    <!-- Capteurs de la foret selectionnee -->
+    <div *ngIf="selectedForest">
+      <div class="panel-header">
+        <h3>Capteurs <ion-badge color="success">{{ selectedForest.sensors?.length || 0 }}</ion-badge></h3>
       </div>
-      <div class="sensor-actions">
-        <ion-button fill="clear" size="small" color="danger" *ngIf="selectedSensor?.id === sensor.id" (click)="deleteSensor(sensor); $event.stopPropagation()">
-          <ion-icon name="trash-outline"></ion-icon>
-        </ion-button>
-        <ion-chip [color]="sensor.status === 'active' ? 'success' : sensor.status === 'alert' ? 'danger' : 'warning'">
-          {{ getStatusLabel(sensor.status) }}
+      <div *ngIf="!selectedForest.sensors?.length" class="empty-state">
+        Aucun capteur - cliquez "Placer un capteur"
+      </div>
+      <div *ngFor="let sensor of selectedForest.sensors"
+           class="sensor-item"
+           [class.selected]="selectedSensor?.id === sensor.id"
+           (click)="selectSensor(sensor)">
+        <div class="sensor-dot" [style.background]="getStatusColor(sensor.status)"></div>
+        <div class="sensor-info">
+          <h4>{{ sensor.uid }}</h4>
+          <p>{{ getStatusLabel(sensor.status) }}</p>
+        </div>
+        <div class="sensor-actions">
+          <ion-button fill="clear" size="small" color="danger" *ngIf="selectedSensor?.id === sensor.id" (click)="deleteSensor(sensor); $event.stopPropagation()">
+            <ion-icon name="trash-outline"></ion-icon>
+          </ion-button>
+          <ion-chip [color]="sensor.status === 'active' ? 'success' : sensor.status === 'alert' ? 'danger' : 'warning'">
+            {{ getStatusLabel(sensor.status) }}</ion-chip>
+        </div>
+      </div>
+    </div>
+
+    <!-- Simulation de propagation -->
+    <div *ngIf="fireSimulationActive" class="propagation-card">
+      <div class="propagation-card__header">
+        <h3>Propagation du feu</h3>
+        <ion-chip [color]="propagationSimulationActive ? 'warning' : 'medium'">
+          {{ propagationSimulationActive ? 'En cours' : 'Prête' }}
         </ion-chip>
       </div>
+      <div class="propagation-summary">
+        <div>
+          <span>Direction</span>
+          <strong>{{ propagationResult?.predicted_spread_direction_label || '—' }}</strong>
+        </div>
+        <div>
+          <span>Vitesse</span>
+          <strong>{{ propagationResult ? (propagationResult.predicted_spread_speed_kmh | number:'1.0-1') + ' km/h' : '—' }}</strong>
+        </div>
+        <div>
+          <span>Temps simulé</span>
+          <strong>{{ getPropagationElapsedLabel() }}</strong>
+        </div>
+        <div>
+          <span>Distance</span>
+          <strong>{{ propagationCurrentDistanceM | number:'1.0-0' }} m</strong>
+        </div>
+      </div>
+      <p class="propagation-scale">Échelle de temps: 1 s = {{ propagationTimeScaleMinutesPerSecond }} min simulée</p>
+      <div class="propagation-params" *ngIf="propagationResult">
+        <div><span>Météo</span><strong>{{ propagationWeatherLabel }}</strong></div>
+        <div><span>Température</span><strong>{{ propagationWeatherTemperatureC | number:'1.0-0' }} °C</strong></div>
+        <div><span>Vent</span><strong>{{ propagationWeatherWindSpeedKmh | number:'1.0-0' }} km/h</strong></div>
+        <div><span>Direction vent</span><strong>{{ propagationWeatherWindDirectionDeg | number:'1.0-0' }}°</strong></div>
+        <div><span>Humidité forêt</span><strong>{{ propagationWeatherHumidityPct | number:'1.0-0' }}%</strong></div>
+        <div><span>Zone d'origine</span><strong>{{ propagationResult.origin_zone }}</strong></div>
+        <div><span>Risque</span><strong>{{ propagationResult.risk_level }}</strong></div>
+      </div>
+      <p *ngIf="propagationResult" class="propagation-explanation">{{ propagationResult.explanation }}</p>
+      <div class="modal-actions propagation-actions">
+        <button class="action-btn primary" *ngIf="!propagationSimulationActive" (click)="startPropagationSimulation()">
+          <ion-icon name="play-outline"></ion-icon>
+          Lancer la propagation
+        </button>
+        <button class="action-btn warning" *ngIf="propagationSimulationActive" (click)="stopPropagationSimulation(false)">
+          <ion-icon name="pause-outline"></ion-icon>
+          Pause
+        </button>
+      </div>
     </div>
-  </div>
 
-  <!-- Simulation de propagation -->
-  <div *ngIf="fireSimulationActive" class="propagation-card">
-    <div class="propagation-card__header">
-      <h3>Propagation du feu</h3>
-      <ion-chip [color]="propagationSimulationActive ? 'warning' : 'medium'">
-        {{ propagationSimulationActive ? 'En cours' : 'Prête' }}
-      </ion-chip>
-    </div>
-    <div class="propagation-summary">
-      <div>
-        <span>Direction</span>
-        <strong>{{ propagationResult?.predicted_spread_direction_label || '—' }}</strong>
+    <div *ngIf="mode === 'view'">
+      <div class="panel-header">
+        <h3>Forets <ion-badge color="success">{{ forests.length }}</ion-badge></h3>
       </div>
-      <div>
-        <span>Vitesse</span>
-        <strong>{{ propagationResult ? (propagationResult.predicted_spread_speed_m_per_h | number:'1.0-0') + ' m/h' : '—' }}</strong>
+      <div *ngIf="!forests.length" class="empty-state">
+        Aucune foret - creez-en une !
       </div>
-      <div>
-        <span>Temps simulé</span>
-        <strong>{{ getPropagationElapsedLabel() }}</strong>
-      </div>
-      <div>
-        <span>Distance</span>
-        <strong>{{ propagationCurrentDistanceM | number:'1.0-0' }} m</strong>
-      </div>
-    </div>
-    <p class="propagation-scale">Échelle de temps: 1 s = {{ propagationTimeScaleMinutesPerSecond }} min simulée</p>
-    <div class="propagation-params" *ngIf="propagationResult">
-      <div><span>Météo</span><strong>{{ propagationWeatherLabel }}</strong></div>
-      <div><span>Température</span><strong>{{ propagationWeatherTemperatureC | number:'1.0-0' }} °C</strong></div>
-      <div><span>Vent</span><strong>{{ propagationWeatherWindSpeedKmh | number:'1.0-0' }} km/h</strong></div>
-      <div><span>Direction vent</span><strong>{{ propagationWeatherWindDirectionDeg | number:'1.0-0' }}°</strong></div>
-      <div><span>Humidité forêt</span><strong>{{ propagationWeatherHumidityPct | number:'1.0-0' }}%</strong></div>
-      <div><span>Zone d'origine</span><strong>{{ propagationResult.origin_zone }}</strong></div>
-      <div><span>Confiance</span><strong>{{ propagationResult.confidence | number:'1.0-2' }}</strong></div>
-      <div><span>Risque</span><strong>{{ propagationResult.risk_level }}</strong></div>
-    </div>
-    <p *ngIf="propagationResult" class="propagation-explanation">{{ propagationResult.explanation }}</p>
-    <div class="modal-actions propagation-actions">
-      <button class="action-btn primary" *ngIf="!propagationSimulationActive" (click)="startPropagationSimulation()">
-        <ion-icon name="play-outline"></ion-icon>
-        Lancer la propagation
-      </button>
-      <button class="action-btn warning" *ngIf="propagationSimulationActive" (click)="stopPropagationSimulation(false)">
-        <ion-icon name="pause-outline"></ion-icon>
-        Pause
-      </button>
-    </div>
-  </div>
-
-  <div *ngIf="mode === 'view'">
-    <div class="panel-header">
-      <h3>Forets <ion-badge color="success">{{ forests.length }}</ion-badge></h3>
-    </div>
-    <div *ngIf="!forests.length" class="empty-state">
-      Aucune foret - creez-en une !
-    </div>
-    <div *ngFor="let forest of forests" class="forest-item" (click)="selectForest(forest)">
-      <ion-icon name="leaf-outline" color="success"></ion-icon>
-      <div class="forest-info">
-        <h4>{{ forest.name }}</h4>
-        <p>{{ forest.description || "Aucune description" }}</p>
+      <div *ngFor="let forest of forests" class="forest-item" (click)="selectForest(forest)">
+        <ion-icon name="leaf-outline" color="success"></ion-icon>
+        <div class="forest-info">
+          <h4>{{ forest.name }}</h4>
+          <p>{{ forest.description || "Aucune description" }}</p>
+        </div>
       </div>
     </div>
   </div>
