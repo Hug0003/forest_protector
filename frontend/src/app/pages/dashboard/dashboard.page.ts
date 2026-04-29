@@ -7,7 +7,7 @@ import {
   IonCard, IonCardContent, IonText, IonGrid, IonRow, IonCol
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { mapOutline, refreshOutline } from 'ionicons/icons';
+import { mapOutline, refreshOutline, arrowBack } from 'ionicons/icons';
 import { SensorService } from '../../services/sensor.service';
 
 @Component({
@@ -38,7 +38,7 @@ export class DashboardPage implements OnInit {
   chartUrl = 'http://localhost:3000/d/technical-sensors?orgId=1&refresh=30s&kiosk=tv';
 
   constructor(private sensorService: SensorService) {
-    addIcons({ mapOutline, refreshOutline });
+    addIcons({ mapOutline, refreshOutline, arrowBack });
   }
 
   ngOnInit() {

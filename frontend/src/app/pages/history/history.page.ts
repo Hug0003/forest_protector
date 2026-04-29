@@ -8,7 +8,7 @@ import {
   IonSegment, IonSegmentButton, IonCard, IonCardContent, IonItemDivider, IonChip
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { timeOutline } from 'ionicons/icons';
+import { timeOutline, arrowBack } from 'ionicons/icons';
 import { FormsModule } from '@angular/forms';
 
 interface HistoryEvent {
@@ -98,7 +98,7 @@ export class HistoryPage implements OnInit {
   }
 
   constructor() {
-    addIcons({ timeOutline });
+    addIcons({ timeOutline, arrowBack });
   }
 
   ngOnInit() {

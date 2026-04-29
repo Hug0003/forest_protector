@@ -10,7 +10,7 @@ import {
   AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { logOutOutline, settingsOutline } from 'ionicons/icons';
+import { logOutOutline, settingsOutline, arrowBack } from 'ionicons/icons';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -46,7 +46,7 @@ export class ProfilePage implements OnInit {
     private router: Router,
     private alertController: AlertController
   ) {
-    addIcons({ logOutOutline, settingsOutline });
+    addIcons({ logOutOutline, settingsOutline, arrowBack });
   }
 
   ngOnInit() {
