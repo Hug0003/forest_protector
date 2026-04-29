@@ -44,6 +44,14 @@
       <ion-icon name="flame-outline"></ion-icon>
       Simuler un feu
     </button>
+    <button class="action-btn primary" *ngIf="fireSimulationActive && !propagationSimulationActive" (click)="startPropagationSimulation()">
+      <ion-icon name="trending-up-outline"></ion-icon>
+      Simuler la propagation
+    </button>
+    <button class="action-btn warning" *ngIf="propagationSimulationActive" (click)="stopPropagationSimulation()">
+      <ion-icon name="pause-outline"></ion-icon>
+      Arrêter la propagation
+    </button>
     <button class="action-btn danger" *ngIf="isFireSimulationActive()" (click)="stopFireSimulation()">
       <ion-icon name="close-outline"></ion-icon>
       Arrêter la simulation
@@ -90,7 +98,56 @@
     </div>
   </div>
 
-  <!-- Liste des forets -->
+  <!-- Simulation de propagation -->
+  <div *ngIf="fireSimulationActive" class="propagation-card">
+    <div class="propagation-card__header">
+      <h3>Propagation du feu</h3>
+      <ion-chip [color]="propagationSimulationActive ? 'warning' : 'medium'">
+        {{ propagationSimulationActive ? 'En cours' : 'Prête' }}
+      </ion-chip>
+    </div>
+    <div class="propagation-summary">
+      <div>
+        <span>Direction</span>
+        <strong>{{ propagationResult?.predicted_spread_direction_label || '—' }}</strong>
+      </div>
+      <div>
+        <span>Vitesse</span>
+        <strong>{{ propagationResult ? (propagationResult.predicted_spread_speed_m_per_h | number:'1.0-0') + ' m/h' : '—' }}</strong>
+      </div>
+      <div>
+        <span>Temps simulé</span>
+        <strong>{{ getPropagationElapsedLabel() }}</strong>
+      </div>
+      <div>
+        <span>Distance</span>
+        <strong>{{ propagationCurrentDistanceM | number:'1.0-0' }} m</strong>
+      </div>
+    </div>
+    <p class="propagation-scale">Échelle de temps: 1 s = {{ propagationTimeScaleMinutesPerSecond }} min simulée</p>
+    <div class="propagation-params" *ngIf="propagationResult">
+      <div><span>Météo</span><strong>{{ propagationWeatherLabel }}</strong></div>
+      <div><span>Température</span><strong>{{ propagationWeatherTemperatureC | number:'1.0-0' }} °C</strong></div>
+      <div><span>Vent</span><strong>{{ propagationWeatherWindSpeedKmh | number:'1.0-0' }} km/h</strong></div>
+      <div><span>Direction vent</span><strong>{{ propagationWeatherWindDirectionDeg | number:'1.0-0' }}°</strong></div>
+      <div><span>Humidité forêt</span><strong>{{ propagationWeatherHumidityPct | number:'1.0-0' }}%</strong></div>
+      <div><span>Zone d'origine</span><strong>{{ propagationResult.origin_zone }}</strong></div>
+      <div><span>Confiance</span><strong>{{ propagationResult.confidence | number:'1.0-2' }}</strong></div>
+      <div><span>Risque</span><strong>{{ propagationResult.risk_level }}</strong></div>
+    </div>
+    <p *ngIf="propagationResult" class="propagation-explanation">{{ propagationResult.explanation }}</p>
+    <div class="modal-actions propagation-actions">
+      <button class="action-btn primary" *ngIf="!propagationSimulationActive" (click)="startPropagationSimulation()">
+        <ion-icon name="play-outline"></ion-icon>
+        Lancer la propagation
+      </button>
+      <button class="action-btn warning" *ngIf="propagationSimulationActive" (click)="stopPropagationSimulation(false)">
+        <ion-icon name="pause-outline"></ion-icon>
+        Pause
+      </button>
+    </div>
+  </div>
+
   <div *ngIf="mode === 'view'">
     <div class="panel-header">
       <h3>Forets <ion-badge color="success">{{ forests.length }}</ion-badge></h3>
@@ -106,6 +163,7 @@
       </div>
     </div>
   </div>
+</div>
 
 <!-- MODAL creation foret -->
 <ion-modal [isOpen]="showForestModal" (didDismiss)="cancelDraw()">

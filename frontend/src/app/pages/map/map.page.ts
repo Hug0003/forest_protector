@@ -10,11 +10,16 @@ import { addIcons } from "ionicons";
 import {
   refreshOutline, addOutline, closeOutline,
   leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
-  trashOutline, arrowBackOutline
+  trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline
 } from "ionicons/icons";
 import * as L from "leaflet";
 import "leaflet-draw";
-import { ForestService, Forest } from "../../services/forest.service";
+import {
+  FireSpreadPredictionRequest,
+  FireSpreadPredictionResult,
+  ForestService,
+  Forest
+} from "../../services/forest.service";
 import { SensorService } from "../../services/sensor.service";
 
 type MapMode = "view" | "draw_forest" | "view_forest" | "place_sensor";
@@ -53,6 +58,22 @@ export class MapPage implements OnInit, AfterViewInit {
   fireOverlay: L.LayerGroup | null = null;
   fireSimulationActive = false;
   firePoint: { lat: number; lng: number } | null = null;
+  propagationSimulationActive = false;
+  propagationResult: FireSpreadPredictionResult | null = null;
+  propagationOverlay: L.LayerGroup | null = null;
+  propagationTrail: L.Polyline | null = null;
+  propagationFrontMarker: L.CircleMarker | null = null;
+  propagationTimer: ReturnType<typeof setInterval> | null = null;
+  propagationElapsedMinutes = 0;
+  propagationTimeScaleMinutesPerSecond = 15;
+  propagationCurrentDistanceM = 0;
+  propagationCurrentPoint: { lat: number; lng: number } | null = null;
+  propagationOriginPoint: { lat: number; lng: number } | null = null;
+  propagationWeatherLabel = "";
+  propagationWeatherTemperatureC: number | null = null;
+  propagationWeatherWindSpeedKmh: number | null = null;
+  propagationWeatherWindDirectionDeg: number | null = null;
+  propagationWeatherHumidityPct: number | null = null;
   readonly SENSOR_DETECTION_RADIUS_M = 1500;
 
   // Dessin polygone
@@ -87,7 +108,7 @@ export class MapPage implements OnInit, AfterViewInit {
     addIcons({
       refreshOutline, addOutline, closeOutline,
       leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
-      trashOutline, arrowBackOutline
+      trashOutline, arrowBackOutline, trendingUpOutline, playOutline, pauseOutline
     });
   }
 
@@ -208,6 +229,265 @@ export class MapPage implements OnInit, AfterViewInit {
 
     this.fireOverlay.addTo(this.map);
     this.map.setView([point.lat, point.lng], Math.max(this.map.getZoom(), 13), { animate: true });
+  }
+
+  clearPropagationOverlay() {
+    if (this.propagationTimer) {
+      clearInterval(this.propagationTimer);
+      this.propagationTimer = null;
+    }
+
+    if (this.propagationOverlay) {
+      this.propagationOverlay.removeFrom(this.map);
+      this.propagationOverlay = null;
+    }
+
+    this.propagationTrail = null;
+    this.propagationFrontMarker = null;
+    this.propagationResult = null;
+    this.propagationSimulationActive = false;
+    this.propagationElapsedMinutes = 0;
+    this.propagationCurrentDistanceM = 0;
+    this.propagationCurrentPoint = null;
+    this.propagationOriginPoint = null;
+    this.propagationWeatherLabel = "";
+    this.propagationWeatherTemperatureC = null;
+    this.propagationWeatherWindSpeedKmh = null;
+    this.propagationWeatherWindDirectionDeg = null;
+    this.propagationWeatherHumidityPct = null;
+  }
+
+  async startPropagationSimulation() {
+    if (!this.selectedForest || !this.firePoint) return;
+
+    if (this.propagationSimulationActive) {
+      this.clearPropagationOverlay();
+    }
+
+    const conditions = this.buildRandomPropagationConditions();
+    this.propagationOriginPoint = { ...this.firePoint };
+    this.propagationWeatherLabel = conditions.weather;
+    this.propagationWeatherTemperatureC = conditions.temperature_c ?? null;
+    this.propagationWeatherWindSpeedKmh = conditions.wind_speed_kmh;
+    this.propagationWeatherWindDirectionDeg = conditions.wind_direction_deg;
+    this.propagationWeatherHumidityPct = conditions.forest_humidity_pct;
+
+    try {
+      const prediction = await this.forestService.predictFireSpread(this.selectedForest.id, {
+        forest_type: this.selectedForest.forest_type,
+        wind_speed_kmh: conditions.wind_speed_kmh,
+        wind_direction_deg: conditions.wind_direction_deg,
+        weather: conditions.weather,
+        temperature_c: conditions.temperature_c,
+        forest_humidity_pct: conditions.forest_humidity_pct,
+        origin_zone: conditions.origin_zone,
+        time_horizon_minutes: conditions.time_horizon_minutes,
+        fuel_moisture_pct: conditions.fuel_moisture_pct,
+      });
+
+      this.propagationResult = prediction;
+      this.propagationSimulationActive = true;
+      this.propagationElapsedMinutes = 0;
+      this.propagationCurrentDistanceM = 0;
+      this.propagationCurrentPoint = { ...this.firePoint };
+      this.drawPropagationOverlay();
+      this.updatePropagationOverlay();
+
+      this.propagationTimer = setInterval(() => {
+        if (!this.propagationResult || !this.propagationOriginPoint) return;
+
+        this.propagationElapsedMinutes = Math.min(
+          this.propagationElapsedMinutes + this.propagationTimeScaleMinutesPerSecond,
+          this.propagationResult.time_horizon_minutes
+        );
+        const totalDistanceM = this.getPropagationDistanceAtMinutes(this.propagationElapsedMinutes);
+        this.propagationCurrentDistanceM = totalDistanceM;
+        this.propagationCurrentPoint = this.projectPoint(
+          this.propagationOriginPoint,
+          this.propagationResult.predicted_spread_direction_deg,
+          totalDistanceM
+        );
+        this.updatePropagationOverlay();
+
+        if (this.propagationElapsedMinutes >= this.propagationResult.time_horizon_minutes) {
+          if (this.propagationTimer) {
+            clearInterval(this.propagationTimer);
+            this.propagationTimer = null;
+          }
+        }
+      }, 1000);
+
+      this.showToast(
+        `Propagation lancée: ${prediction.predicted_spread_direction_label} à ${prediction.predicted_spread_speed_m_per_h.toFixed(0)} m/h sur ${prediction.time_horizon_minutes} min.`,
+        "warning"
+      );
+    } catch (err: any) {
+      console.error("Erreur simulation propagation feu", err);
+      this.showToast(err?.error?.detail || "Erreur lors de la simulation de propagation");
+    }
+  }
+
+  stopPropagationSimulation(clearResult = true) {
+    if (this.propagationTimer) {
+      clearInterval(this.propagationTimer);
+      this.propagationTimer = null;
+    }
+
+    if (this.propagationOverlay) {
+      this.propagationOverlay.removeFrom(this.map);
+      this.propagationOverlay = null;
+    }
+
+    this.propagationTrail = null;
+    this.propagationFrontMarker = null;
+    this.propagationSimulationActive = false;
+    this.propagationElapsedMinutes = 0;
+    this.propagationCurrentDistanceM = 0;
+    this.propagationCurrentPoint = null;
+    this.propagationOriginPoint = null;
+
+    if (clearResult) {
+      this.propagationResult = null;
+      this.propagationWeatherLabel = "";
+      this.propagationWeatherTemperatureC = null;
+      this.propagationWeatherWindSpeedKmh = null;
+      this.propagationWeatherWindDirectionDeg = null;
+      this.propagationWeatherHumidityPct = null;
+    }
+  }
+
+  drawPropagationOverlay() {
+    if (!this.propagationOriginPoint) return;
+
+    if (this.propagationOverlay) {
+      this.propagationOverlay.removeFrom(this.map);
+    }
+
+    this.propagationOverlay = L.layerGroup().addTo(this.map);
+    this.propagationTrail = L.polyline([], {
+      color: "#ff7a18",
+      weight: 4,
+      opacity: 0.9,
+      dashArray: "8 8",
+    }).addTo(this.propagationOverlay);
+
+    this.propagationFrontMarker = L.circleMarker([this.propagationOriginPoint.lat, this.propagationOriginPoint.lng], {
+      radius: 8,
+      color: "#ffffff",
+      weight: 2,
+      fillColor: "#ff4d4d",
+      fillOpacity: 1,
+    }).addTo(this.propagationOverlay);
+
+    L.circle([this.propagationOriginPoint.lat, this.propagationOriginPoint.lng], {
+      radius: 80,
+      color: "#ffb300",
+      weight: 2,
+      fillColor: "#ffb300",
+      fillOpacity: 0.1,
+    }).addTo(this.propagationOverlay);
+
+    this.map.setView([this.propagationOriginPoint.lat, this.propagationOriginPoint.lng], Math.max(this.map.getZoom(), 13), { animate: true });
+  }
+
+  updatePropagationOverlay() {
+    if (!this.propagationOverlay || !this.propagationTrail || !this.propagationFrontMarker || !this.propagationOriginPoint || !this.propagationResult || !this.propagationCurrentPoint) {
+      return;
+    }
+
+    const path = [
+      [this.propagationOriginPoint.lat, this.propagationOriginPoint.lng],
+      [this.propagationCurrentPoint.lat, this.propagationCurrentPoint.lng],
+    ] as L.LatLngExpression[];
+
+    this.propagationTrail.setLatLngs(path);
+    this.propagationFrontMarker.setLatLng([this.propagationCurrentPoint.lat, this.propagationCurrentPoint.lng]);
+
+    const existingFrontCircle = this.propagationOverlay.getLayers().find(layer => (layer as any).__propagationFrontCircle) as L.Circle | undefined;
+    if (existingFrontCircle) {
+      existingFrontCircle.setRadius(this.propagationCurrentDistanceM);
+    } else {
+      const frontCircle = L.circle([this.propagationOriginPoint.lat, this.propagationOriginPoint.lng], {
+        radius: this.propagationCurrentDistanceM,
+        color: "#ff7a18",
+        weight: 2,
+        fillColor: "#ff7a18",
+        fillOpacity: 0.08,
+      }) as L.Circle;
+      (frontCircle as any).__propagationFrontCircle = true;
+      frontCircle.addTo(this.propagationOverlay);
+    }
+  }
+
+  getPropagationStatusLabel(): string {
+    if (!this.propagationResult) return "En attente";
+    return `${this.propagationResult.predicted_spread_direction_label} - ${this.propagationResult.predicted_spread_speed_m_per_h.toFixed(0)} m/h`;
+  }
+
+  getPropagationElapsedLabel(): string {
+    return `${this.propagationElapsedMinutes} min`;
+  }
+
+  buildRandomPropagationConditions(): FireSpreadPredictionRequest {
+    const weatherOptions = ["dry", "clear", "windy", "cloudy", "overcast", "rainy"];
+    const weather = weatherOptions[Math.floor(Math.random() * weatherOptions.length)];
+    const temperature_c = Math.round((8 + Math.random() * 30) * 10) / 10;
+    const wind_speed_kmh = Math.round((5 + Math.random() * 45) * 10) / 10;
+    const wind_direction_deg = Math.round(Math.random() * 3600) / 10;
+    const forest_humidity_pct = Math.round((18 + Math.random() * 60) * 10) / 10;
+    const fuel_moisture_pct = Math.round((10 + Math.random() * 40) * 10) / 10;
+
+    return {
+      forest_type: this.selectedForest?.forest_type || undefined,
+      wind_speed_kmh,
+      wind_direction_deg,
+      weather,
+      temperature_c,
+      forest_humidity_pct,
+      origin_zone: this.pickOriginZoneLabel(),
+      time_horizon_minutes: 120,
+      fuel_moisture_pct,
+    };
+  }
+
+  pickOriginZoneLabel(): string {
+    const zoneCandidates = (this.selectedForest?.sensors || [])
+      .map((sensor: any) => sensor.zone_id)
+      .filter((zoneId: any) => zoneId !== null && zoneId !== undefined);
+
+    if (zoneCandidates.length > 0) {
+      const zoneId = zoneCandidates[Math.floor(Math.random() * zoneCandidates.length)];
+      return `Zone ${zoneId}`;
+    }
+
+    return `Point d'origine ${this.firePoint?.lat.toFixed(3) ?? ""}, ${this.firePoint?.lng.toFixed(3) ?? ""}`.trim();
+  }
+
+  getPropagationDistanceAtMinutes(minutes: number): number {
+    if (!this.propagationResult) return 0;
+    return Math.round((this.propagationResult.predicted_spread_speed_m_per_h * minutes / 60) * 10) / 10;
+  }
+
+  projectPoint(origin: { lat: number; lng: number }, bearingDeg: number, distanceMeters: number): { lat: number; lng: number } {
+    const earthRadius = 6371000;
+    const bearing = (bearingDeg * Math.PI) / 180;
+    const lat1 = (origin.lat * Math.PI) / 180;
+    const lon1 = (origin.lng * Math.PI) / 180;
+    const angularDistance = distanceMeters / earthRadius;
+
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(angularDistance) +
+      Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing)
+    );
+    const lon2 = lon1 + Math.atan2(
+      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
+      Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+    return {
+      lat: (lat2 * 180) / Math.PI,
+      lng: ((lon2 * 180) / Math.PI + 540) % 360 - 180,
+    };
   }
 
   // Mode dessin polygone
@@ -413,6 +693,7 @@ export class MapPage implements OnInit, AfterViewInit {
 
     try {
       const result = await this.forestService.stopFireSimulation(this.selectedForest.id);
+      this.stopPropagationSimulation();
       this.fireSimulationActive = false;
       this.clearFireOverlay();
       await this.loadForests();
@@ -436,6 +717,7 @@ export class MapPage implements OnInit, AfterViewInit {
   async deleteForest() {
     if (!this.selectedForest) return;
     try {
+      this.stopPropagationSimulation();
       await this.forestService.deleteForest(this.selectedForest.id);
       this.forests = this.forests.filter(f => f.id !== this.selectedForest!.id);
       this.closeForest();

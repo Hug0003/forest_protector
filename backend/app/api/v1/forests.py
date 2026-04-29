@@ -48,7 +48,7 @@ async def get_forest(forest_id: int, db: AsyncSession = Depends(get_db)):
 
     sensors_query = text("""
         SELECT
-            s.id, s.uid, s.status, s.last_seen, s.sensor_type_id,
+            s.id, s.uid, s.status, s.last_seen, s.sensor_type_id, s.zone_id,
             ST_Y(s.location::geometry) AS lat,
             ST_X(s.location::geometry) AS lng,
             (
@@ -77,6 +77,7 @@ async def get_forest(forest_id: int, db: AsyncSession = Depends(get_db)):
                 "status": s.status,
                 "last_seen": s.last_seen.isoformat() if s.last_seen else None,
                 "sensor_type_id": s.sensor_type_id,
+                "zone_id": s.zone_id,
                 "lat": s.lat,
                 "lng": s.lng,
                 "battery_level": s.battery_level,

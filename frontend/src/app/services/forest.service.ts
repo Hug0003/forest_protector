@@ -46,6 +46,40 @@ export interface StopFireSimulationResult {
   status: string;
 }
 
+export interface FireSpreadPredictionRequest {
+  forest_type?: string;
+  wind_speed_kmh: number;
+  wind_direction_deg: number;
+  weather: string;
+  temperature_c?: number;
+  forest_humidity_pct: number;
+  origin_zone: string;
+  time_horizon_minutes?: number;
+  fuel_moisture_pct?: number;
+}
+
+export interface FireSpreadPredictionResult {
+  forest_id: number;
+  forest_name: string;
+  forest_type?: string;
+  origin_zone: string;
+  weather: string;
+  temperature_c?: number;
+  wind_speed_kmh: number;
+  wind_direction_deg: number;
+  forest_humidity_pct: number;
+  predicted_spread_direction_deg: number;
+  predicted_spread_direction_label: string;
+  predicted_spread_speed_kmh: number;
+  predicted_spread_speed_m_per_h: number;
+  estimated_distance_m: number;
+  predicted_affected_zone: string;
+  confidence: number;
+  risk_level: string;
+  time_horizon_minutes: number;
+  explanation: string;
+}
+
 @Injectable({ providedIn: "root" })
 export class ForestService {
   private api = environment.apiUrl;
@@ -91,6 +125,21 @@ export class ForestService {
   async stopFireSimulation(forestId: number): Promise<StopFireSimulationResult> {
     return firstValueFrom(
       this.http.post<StopFireSimulationResult>(`${this.api}/api/v1/forests/${forestId}/stop-fire-simulation`, {})
+    );
+  }
+
+  async predictFireSpread(
+    forestId: number,
+    data: FireSpreadPredictionRequest
+  ): Promise<FireSpreadPredictionResult> {
+    return firstValueFrom(
+      this.http.post<FireSpreadPredictionResult>(
+        `${this.api}/api/v1/forests/${forestId}/predict-fire-spread`,
+        {
+          ...data,
+          time_horizon_minutes: data.time_horizon_minutes ?? 60,
+        }
+      )
     );
   }
 }
