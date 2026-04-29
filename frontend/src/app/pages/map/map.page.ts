@@ -77,7 +77,7 @@ export class MapPage implements OnInit, AfterViewInit {
   propagationWeatherWindDirectionDeg: number | null = null;
   propagationWeatherHumidityPct: number | null = null;
   bottomPanelsCollapsed = false;
-  readonly SENSOR_DETECTION_RADIUS_M = 1500;
+  readonly SENSOR_DETECTION_RADIUS_M = 2500;
 
   // Dessin polygone
   drawnItems!: L.FeatureGroup;
@@ -699,7 +699,7 @@ export class MapPage implements OnInit, AfterViewInit {
       this.clearSensorDetectionOverlay();
       this.drawSensorMarkers(detail.sensors || []);
       if (this.fireSimulationActive && this.firePoint) {
-        this.drawFireOverlay(this.firePoint, 1500);
+        this.drawFireOverlay(this.firePoint, 2500);
       }
 
       // Zoom sur la forêt
@@ -760,7 +760,7 @@ export class MapPage implements OnInit, AfterViewInit {
 
     try {
       const result = await this.forestService.simulateFire(this.selectedForest.id);
-      this.fireSimulationActive = true; this.clearSensorDetectionOverlay(); this.drawFireOverlay(result.fire_point, result.radius_m || 1500);
+      this.fireSimulationActive = true; this.clearSensorDetectionOverlay(); this.drawFireOverlay(result.fire_point, result.radius_m || 2500);
       await this.loadForests();
       await this.selectForest(this.selectedForest);
       this.showToast(`Feu simulé sur ${result.affected_sensors} capteur(s). Un point de feu a été placé dans la forêt.`, "warning");

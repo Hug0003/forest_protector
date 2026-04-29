@@ -204,7 +204,7 @@ async def simulate_fire(forest_id: int, db: AsyncSession = Depends(get_db)):
     if not sensors:
         raise HTTPException(status_code=400, detail="No sensors available in this forest")
 
-    detection_radius_m = 1500.0
+    detection_radius_m = 2500.0
 
     point_result = await db.execute(
         text("""

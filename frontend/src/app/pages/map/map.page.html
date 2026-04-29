@@ -14,6 +14,9 @@
       <ion-button (click)="refresh()">
         <ion-icon name="refresh-outline"></ion-icon>
       </ion-button>
+      <ion-button *ngIf="selectedForest" color="danger" (click)="deleteForest()">
+        <ion-icon name="trash-outline"></ion-icon>
+      </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
@@ -56,7 +59,7 @@
       <ion-icon name="close-outline"></ion-icon>
       Arrêter la simulation
     </button>
-    <button class="action-btn danger" (click)="deleteForest()">Supprimer</button>
+
   </ng-container>
   <ng-container *ngIf="mode === 'place_sensor'">
     <span class="action-hint drawing">Cliquez sur la carte pour placer le capteur...</span>
