@@ -41,6 +41,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://forest_admin:${DB_PASSWORD}@timescaledb:5432/forest_monitoring
       JWT_SECRET: ${JWT_SECRET}
       WEATHER_API_KEY: ${WEATHER_API_KEY}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_DESTINATION: ${SMTP_DESTINATION}
       # Environnement (dev/prod change certains comportements)
       ENVIRONMENT: development
     depends_on:
