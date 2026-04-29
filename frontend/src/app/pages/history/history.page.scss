@@ -1,244 +1,155 @@
 ion-content {
-  --padding-start: 0;
-  --padding-end: 0;
-  --padding-top: 0;
-  --padding-bottom: 0;
+  --background: #f8fafc;
 }
 
-.history-header {
-  background: linear-gradient(135deg, #f4a261 0%, #e76f51 100%);
+.history-summary {
+  background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
   color: white;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(231, 111, 81, 0.2);
-
+  padding: 30px 20px 50px;
+  text-align: center;
+  position: relative;
+  
   h2 {
-    margin: 0 0 4px 0;
-    font-size: 20px;
-    font-weight: 700;
-  }
-
-  p {
     margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+  }
+  
+  p {
+    margin: 4px 0 0;
     opacity: 0.9;
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
-.filter-bar {
+.history-container {
+  padding: 0 16px;
+  margin-top: -30px;
+  position: relative;
+  z-index: 10;
+}
+
+ion-segment {
   background: white;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e8e8e8;
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-
-  ion-segment {
-    flex: 1;
-    min-width: auto;
-
-    --padding-bottom: 0;
-    --padding-top: 0;
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  
+  ion-segment-button {
+    --indicator-color: #f43f5e;
+    --color: #64748b;
+    --color-checked: #f43f5e;
+    --border-radius: 10px;
+    font-weight: 700;
+    font-size: 12px;
+    min-height: 40px;
   }
 }
 
-.event-list {
+.alert-card-modern {
+  background: white;
+  border-radius: 18px;
   padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border-left: 5px solid transparent;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-
-  .event-card {
-    background: white;
-    border-radius: 12px;
-    padding: 0;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    border-left: 4px solid #e8e8e8;
-
-    &:hover {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-      transform: translateY(-2px);
-    }
-
-    &.error {
-      border-left-color: #f04545;
-
-      .event-header {
-        background: #fff5f5;
-      }
-    }
-
-    &.warning {
-      border-left-color: #ffc409;
-
-      .event-header {
-        background: #fffbf0;
-      }
-    }
-
-    &.info {
-      border-left-color: #0066cc;
-
-      .event-header {
-        background: #f0f7ff;
-      }
-    }
-
-    &.success {
-      border-left-color: #2dd36f;
-
-      .event-header {
-        background: #f0fdf4;
-      }
-    }
-
-    .event-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px;
-      background: #f8f9fa;
-
-      .event-severity {
-        font-size: 20px;
-        flex-shrink: 0;
-
-        &.error { content: "🔴"; }
-        &.warning { content: "⚠️"; }
-        &.info { content: "ℹ️"; }
-        &.success { content: "✅"; }
-      }
-
-      .event-title {
-        flex: 1;
-        font-size: 13px;
-        font-weight: 600;
-        color: #333;
+  gap: 10px;
+  
+  &.critical { border-left-color: #ef4444; }
+  &.warning { border-left-color: #f59e0b; }
+  &.info { border-left-color: #3b82f6; }
+  
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    
+    .sensor-info {
+      h3 {
         margin: 0;
+        font-size: 15px;
+        font-weight: 800;
+        color: #1e293b;
       }
-
-      .event-time {
-        font-size: 11px;
-        color: #999;
-        flex-shrink: 0;
-      }
-    }
-
-    .event-body {
-      padding: 12px;
-
-      .event-message {
+      p {
+        margin: 2px 0 0;
         font-size: 12px;
-        color: #666;
-        margin: 0 0 8px 0;
-        line-height: 1.4;
-      }
-
-      .event-details {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        font-size: 11px;
-
-        .detail-item {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-
-          .detail-label {
-            color: #999;
-            font-weight: 600;
-            text-transform: uppercase;
-          }
-
-          .detail-value {
-            color: #333;
-            font-weight: 500;
-          }
-        }
-      }
-    }
-
-    .event-footer {
-      padding: 8px 12px;
-      border-top: 1px solid #f0f0f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #fafafa;
-
-      .event-zone {
-        font-size: 11px;
-        color: #666;
+        color: #64748b;
         font-weight: 600;
       }
-
-      .event-actions {
-        display: flex;
-        gap: 6px;
-
-        ion-button {
-          --padding-start: 8px;
-          --padding-end: 8px;
-          height: 24px;
-          font-size: 10px;
-          margin: 0;
-        }
-      }
+    }
+  }
+  
+  .card-message {
+    font-size: 14px;
+    color: #334155;
+    line-height: 1.4;
+    margin: 4px 0;
+  }
+  
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+    
+    .time-stamp {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .status-badges {
+      display: flex;
+      gap: 6px;
     }
   }
 }
 
-.no-events {
-  padding: 48px 16px;
+.empty-state {
   text-align: center;
-
-  .no-events-icon {
-    font-size: 48px;
+  padding: 40px 20px;
+  
+  .icon-box {
+    font-size: 60px;
     margin-bottom: 16px;
     opacity: 0.5;
   }
-
-  .no-events-text {
+  
+  h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+  }
+  
+  p {
     font-size: 14px;
-    color: #999;
-    margin: 0;
-    font-weight: 500;
+    color: #64748b;
   }
 }
 
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: #999;
-
-  ion-spinner {
-    --color: #f4a261;
-    margin-bottom: 12px;
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-  }
+ion-searchbar {
+  --border-radius: 14px;
+  --box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  --background: white;
+  padding-left: 0;
+  padding-right: 0;
+  margin-bottom: 12px;
 }
 
 @media (min-width: 768px) {
-  .event-list {
-    padding: 24px;
-  }
-
-  .event-card {
-    .event-body {
-      .event-details {
-        grid-template-columns: repeat(4, 1fr);
-      }
-    }
+  .history-container {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 

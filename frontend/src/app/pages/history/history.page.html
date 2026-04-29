@@ -15,64 +15,68 @@
 </ion-header>
 
 <ion-content>
-
-  <!-- Pull to refresh -->
-  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
-    <ion-refresher-content></ion-refresher-content>
-  </ion-refresher>
-
-  <ion-searchbar placeholder="Rechercher par capteur, forêt, message..." [(ngModel)]="searchTerm" cancelButtonText="Annuler"></ion-searchbar>
-
-  <ion-segment [value]="activeTab" (ionChange)="segmentChanged($event)">
-    <ion-segment-button value="all">Tous</ion-segment-button>
-    <ion-segment-button value="active">Actives</ion-segment-button>
-    <ion-segment-button value="critical">Critiques</ion-segment-button>
-    <ion-segment-button value="resolved">Résolues</ion-segment-button>
-  </ion-segment>
-
-  <!-- Chargement -->
-  <div *ngIf="isLoading" style="display: flex; justify-content: center; padding: 40px;">
-    <ion-spinner color="success"></ion-spinner>
+  <div class="history-summary">
+    <h2>🔔 Alert History</h2>
+    <p>Historique complet des détections</p>
   </div>
 
-  <!-- Liste des alertes réelles -->
-  <ion-list *ngIf="!isLoading && filteredAlerts.length > 0">
-    <ion-item-divider>
-      <ion-label>{{ filteredAlerts.length }} alerte(s)</ion-label>
-    </ion-item-divider>
+  <div class="history-container">
+    <ion-searchbar 
+      placeholder="Rechercher un capteur ou message..." 
+      [(ngModel)]="searchTerm" 
+      animated="true">
+    </ion-searchbar>
 
-    <ion-item *ngFor="let alert of filteredAlerts">
-      <ion-icon slot="start" name="alert-circle-outline" [color]="getSeverityColor(alert.severity)"></ion-icon>
-      <ion-label>
-        <h2>
-          <strong>{{ alert.sensor_uid || 'Capteur inconnu' }}</strong>
-          <span *ngIf="alert.forest_name" style="font-weight: normal; color: #666;"> — {{ alert.forest_name }}</span>
-        </h2>
-        <p>{{ alert.message }}</p>
-        <small>{{ formatTime(alert.triggered_at) }}</small>
-        <span *ngIf="alert.metric_value !== null" style="font-size: 11px; color: #999;"> · Valeur: {{ alert.metric_value | number:'1.0-1' }}</span>
-      </ion-label>
-      <div slot="end" style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
-        <ion-badge [color]="getSeverityColor(alert.severity)">{{ getSeverityLabel(alert.severity) }}</ion-badge>
-        <ion-chip [color]="getStatusColor(alert.status)" size="small">{{ getStatusLabel(alert.status) }}</ion-chip>
+    <ion-segment [value]="activeTab" (ionChange)="segmentChanged($event)" mode="ios">
+      <ion-segment-button value="all">Tous</ion-segment-button>
+      <ion-segment-button value="active">Actives</ion-segment-button>
+      <ion-segment-button value="critical">Critiques</ion-segment-button>
+      <ion-segment-button value="resolved">Résolues</ion-segment-button>
+    </ion-segment>
+
+    <!-- Chargement -->
+    <div *ngIf="isLoading" style="display: flex; flex-direction: column; align-items: center; padding: 40px;">
+      <ion-spinner name="crescent" color="danger"></ion-spinner>
+      <p style="margin-top: 10px; color: #64748b; font-weight: 600;">Chargement des alertes...</p>
+    </div>
+
+    <!-- Liste des alertes -->
+    <div *ngIf="!isLoading && filteredAlerts.length > 0">
+      <div *ngFor="let alert of filteredAlerts" class="alert-card-modern" [ngClass]="alert.severity">
+        <div class="card-top">
+          <div class="sensor-info">
+            <h3>{{ alert.sensor_uid || 'Capteur inconnu' }}</h3>
+            <p>{{ alert.forest_name || 'Forêt non spécifiée' }}</p>
+          </div>
+          <ion-badge [color]="getSeverityColor(alert.severity)" mode="ios">
+            {{ getSeverityLabel(alert.severity) }}
+          </ion-badge>
+        </div>
+
+        <div class="card-message">
+          {{ alert.message }}
+        </div>
+
+        <div class="card-footer">
+          <div class="time-stamp">
+            <ion-icon name="time-outline"></ion-icon>
+            {{ formatTime(alert.triggered_at) }}
+            <span *ngIf="alert.metric_value !== null"> · {{ alert.metric_value | number:'1.0-1' }}%</span>
+          </div>
+          <div class="status-badges">
+            <ion-chip [color]="getStatusColor(alert.status)" mode="ios" style="margin: 0; height: 24px; font-size: 10px; font-weight: 700;">
+              {{ getStatusLabel(alert.status) }}
+            </ion-chip>
+          </div>
+        </div>
       </div>
-    </ion-item>
-  </ion-list>
+    </div>
 
-  <!-- État vide -->
-  <div *ngIf="!isLoading && filteredAlerts.length === 0" class="empty-state">
-    <ion-card>
-      <ion-card-content>
-        <ion-text color="medium">
-          <h3 style="text-align: center;">
-            {{ searchTerm ? '🔍 Aucun résultat' : (activeTab === 'all' ? '✅ Aucune alerte' : '✅ Aucune alerte dans cette catégorie') }}
-          </h3>
-          <p style="text-align: center;">
-            {{ searchTerm ? 'Essayez d\'autres termes de recherche.' : 'Tout semble fonctionner correctement.' }}
-          </p>
-        </ion-text>
-      </ion-card-content>
-    </ion-card>
+    <!-- État vide -->
+    <div *ngIf="!isLoading && filteredAlerts.length === 0" class="empty-state">
+      <div class="icon-box">🔍</div>
+      <h3>Aucune alerte trouvée</h3>
+      <p>{{ searchTerm ? 'Essayez de modifier vos filtres de recherche.' : 'Tout est sous contrôle dans la forêt.' }}</p>
+    </div>
   </div>
-
 </ion-content>

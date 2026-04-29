@@ -7,7 +7,11 @@ import {
   IonCard, IonCardContent, IonText, IonGrid, IonRow, IonCol
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { mapOutline, refreshOutline, arrowBack } from 'ionicons/icons';
+import { 
+  mapOutline, refreshOutline, arrowBack, 
+  hardwareChipOutline, pulseOutline, cloudOfflineOutline, 
+  alertCircleOutline, analyticsOutline 
+} from 'ionicons/icons';
 import { SensorService } from '../../services/sensor.service';
 
 @Component({
@@ -37,7 +41,11 @@ export class DashboardPage implements OnInit {
 
 
   constructor(private sensorService: SensorService) {
-    addIcons({ mapOutline, refreshOutline, arrowBack });
+    addIcons({ 
+      mapOutline, refreshOutline, arrowBack,
+      hardwareChipOutline, pulseOutline, cloudOfflineOutline,
+      alertCircleOutline, analyticsOutline
+    });
   }
 
   ngOnInit() {

@@ -15,59 +15,106 @@
 </ion-header>
 
 <ion-content>
-  <div class="segment-content">
+  <div class="dashboard-summary">
+    <h2>🌲 Global Stats</h2>
+    <p>Surveillance temps réel de votre forêt</p>
+  </div>
+
+  <div class="stat-grid-container">
     <ion-grid>
       <ion-row>
-        <ion-col size="12" size-sm="6">
-          <ion-card>
-            <ion-card-content>
-              <div class="stat-card">
-                <ion-text color="primary">
-                  <h3>Capteurs Totaux</h3>
-                  <h1>{{ stats.totalSensors }}</h1>
-                </ion-text>
+        <!-- CAPTEURS TOTAUX -->
+        <ion-col size="12">
+          <div class="stat-card-modern">
+            <div class="icon-wrapper total">
+              <ion-icon name="hardware-chip-outline"></ion-icon>
+            </div>
+            <div class="stat-info">
+              <h3>Capteurs Totaux</h3>
+              <div class="value-group">
+                <h1>{{ stats.totalSensors }}</h1>
+                <span>unités</span>
               </div>
-            </ion-card-content>
-          </ion-card>
+            </div>
+            <div class="trend-badge positive">STABLE</div>
+          </div>
         </ion-col>
 
-        <ion-col size="12" size-sm="6">
-          <ion-card>
-            <ion-card-content>
-              <div class="stat-card">
-                <ion-text color="success">
-                  <h3>Actifs</h3>
-                  <h1>{{ stats.activeSensors }}</h1>
-                </ion-text>
+        <!-- ACTIFS -->
+        <ion-col size="12">
+          <div class="stat-card-modern">
+            <div class="icon-wrapper active">
+              <ion-icon name="pulse-outline"></ion-icon>
+            </div>
+            <div class="stat-info">
+              <h3>Capteurs Actifs</h3>
+              <div class="value-group">
+                <h1>{{ stats.activeSensors }}</h1>
+                <span>en ligne</span>
               </div>
-            </ion-card-content>
-          </ion-card>
+            </div>
+            <div class="trend-badge positive">OK</div>
+          </div>
         </ion-col>
 
-        <ion-col size="12" size-sm="6">
-          <ion-card>
-            <ion-card-content>
-              <div class="stat-card">
-                <ion-text color="warning">
-                  <h3>Hors ligne</h3>
-                  <h1>{{ stats.offlineSensors }}</h1>
-                </ion-text>
+        <!-- HORS LIGNE -->
+        <ion-col size="12">
+          <div class="stat-card-modern">
+            <div class="icon-wrapper offline">
+              <ion-icon name="cloud-offline-outline"></ion-icon>
+            </div>
+            <div class="stat-info">
+              <h3>Hors Ligne</h3>
+              <div class="value-group">
+                <h1>{{ stats.offlineSensors }}</h1>
+                <span>perdus</span>
               </div>
-            </ion-card-content>
-          </ion-card>
+            </div>
+          </div>
         </ion-col>
 
-        <ion-col size="12" size-sm="6">
-          <ion-card>
-            <ion-card-content>
-              <div class="stat-card">
-                <ion-text color="danger">
-                  <h3>Alertes</h3>
-                  <h1>{{ stats.alertCount }}</h1>
-                </ion-text>
+        <!-- ALERTES -->
+        <ion-col size="12">
+          <div class="stat-card-modern">
+            <div class="icon-wrapper alert">
+              <ion-icon name="alert-circle-outline"></ion-icon>
+            </div>
+            <div class="stat-info">
+              <h3>Alertes Actives</h3>
+              <div class="value-group">
+                <h1>{{ stats.alertCount }}</h1>
+                <span>critiques</span>
               </div>
-            </ion-card-content>
-          </ion-card>
+            </div>
+          </div>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+
+    <h2 class="section-title">
+      <ion-icon name="analytics-outline"></ion-icon>
+      Indicateurs Moyens
+    </h2>
+
+    <ion-grid>
+      <ion-row>
+        <ion-col size="6">
+          <div class="stat-card-modern" style="padding: 15px; flex-direction: column; align-items: flex-start;">
+            <h3 style="font-size: 11px; margin-bottom: 5px;">🌡️ Température</h3>
+            <div class="value-group">
+              <h1 style="font-size: 20px;">{{ stats.avgTemperature }}</h1>
+              <span style="font-size: 11px;">°C</span>
+            </div>
+          </div>
+        </ion-col>
+        <ion-col size="6">
+          <div class="stat-card-modern" style="padding: 15px; flex-direction: column; align-items: flex-start;">
+            <h3 style="font-size: 11px; margin-bottom: 5px;">💧 Humidité</h3>
+            <div class="value-group">
+              <h1 style="font-size: 20px;">{{ stats.avgHumidity }}</h1>
+              <span style="font-size: 11px;">%</span>
+            </div>
+          </div>
         </ion-col>
       </ion-row>
     </ion-grid>
