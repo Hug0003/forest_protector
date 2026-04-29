@@ -131,7 +131,7 @@ export class MapPage implements OnInit, AfterViewInit {
   }
 
   goHome() {
-    this.navCtrl.navigateBack('/dashboard');
+    this.navCtrl.navigateBack('/home');
   }
 
   async ngOnInit() {
@@ -197,10 +197,10 @@ export class MapPage implements OnInit, AfterViewInit {
         { type: "Feature", geometry: forest.geojson, properties: {} } as any,
         {
           style: {
-            color:       "#2dd36f",
-            weight:      2,
-            opacity:     0.8,
-            fillColor:   "#2dd36f",
+            color: "#2dd36f",
+            weight: 2,
+            opacity: 0.8,
+            fillColor: "#2dd36f",
             fillOpacity: 0.15
           }
         }
@@ -668,10 +668,10 @@ export class MapPage implements OnInit, AfterViewInit {
 
     try {
       const created = await this.forestService.createForest({
-        name:        this.newForest.name,
+        name: this.newForest.name,
         description: this.newForest.description,
         forest_type: this.newForest.forest_type || undefined,
-        total_area:  totalArea ?? undefined,
+        total_area: totalArea ?? undefined,
         coordinates: [coordinates]
       });
 
@@ -760,7 +760,7 @@ export class MapPage implements OnInit, AfterViewInit {
 
     try {
       const result = await this.forestService.simulateFire(this.selectedForest.id);
-      this.fireSimulationActive = true;      this.clearSensorDetectionOverlay();      this.drawFireOverlay(result.fire_point, result.radius_m || 1500);
+      this.fireSimulationActive = true; this.clearSensorDetectionOverlay(); this.drawFireOverlay(result.fire_point, result.radius_m || 1500);
       await this.loadForests();
       await this.selectForest(this.selectedForest);
       this.showToast(`Feu simulé sur ${result.affected_sensors} capteur(s). Un point de feu a été placé dans la forêt.`, "warning");
@@ -780,7 +780,7 @@ export class MapPage implements OnInit, AfterViewInit {
     }
     sensors.forEach(sensor => {
       if (!sensor.lat || !sensor.lng) return;
-      
+
       if (sensor.status === 'alert' && this.alertOverlays) {
         L.circle([sensor.lat, sensor.lng], {
           radius: this.SENSOR_DETECTION_RADIUS_M,
@@ -905,12 +905,12 @@ export class MapPage implements OnInit, AfterViewInit {
     if (!this.selectedForest || !this.pendingSensorLatLng) return;
     try {
       const created = await this.forestService.createSensor({
-        uid:            this.newSensor.uid,
+        uid: this.newSensor.uid,
         sensor_type_id: this.newSensor.sensor_type_id,
-        forest_id:      this.selectedForest.id,
-        lat:            this.pendingSensorLatLng.lat,
-        lng:            this.pendingSensorLatLng.lng,
-        notes:          this.newSensor.notes
+        forest_id: this.selectedForest.id,
+        lat: this.pendingSensorLatLng.lat,
+        lng: this.pendingSensorLatLng.lng,
+        notes: this.newSensor.notes
       });
 
       // Ajoute le marqueur immdiatement
@@ -948,9 +948,9 @@ export class MapPage implements OnInit, AfterViewInit {
       <circle cx="16" cy="12" r="5" fill="white"/>
     </svg>`;
     return L.icon({
-      iconUrl:     `data:image/svg+xml;base64,${btoa(svg)}`,
-      iconSize:    [32, 40],
-      iconAnchor:  [16, 40],
+      iconUrl: `data:image/svg+xml;base64,${btoa(svg)}`,
+      iconSize: [32, 40],
+      iconAnchor: [16, 40],
       popupAnchor: [0, -40]
     });
   }

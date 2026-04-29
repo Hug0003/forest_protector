@@ -83,7 +83,7 @@ export interface FireSpreadPredictionResult {
 export class ForestService {
   private api = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   async getForests(): Promise<Forest[]> {
     return firstValueFrom(this.http.get<Forest[]>(`${this.api}/api/v1/forests`));
