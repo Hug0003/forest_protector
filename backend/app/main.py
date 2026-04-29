@@ -13,7 +13,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8100", "http://localhost:80"],
+    allow_origins=[
+        "http://localhost:8100",
+        "http://localhost:80",
+        "http://localhost",
+        "https://forest-fire.hugomeuriel.fr",
+        "http://forest-fire.hugomeuriel.fr",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
