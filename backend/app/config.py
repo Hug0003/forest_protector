@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     # Environnement
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = ENVIRONMENT == "development"
+
+    # SMTP
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USER: Optional[str] = os.getenv("SMTP_USER", None)
+    SMTP_PASSWORD: Optional[str] = os.getenv("SMTP_PASSWORD", None)
+    SMTP_DESTINATION: Optional[str] = os.getenv("SMTP_DESTINATION", None)
     
     class Config:
         env_file = ".env"
