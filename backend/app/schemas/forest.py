@@ -5,6 +5,7 @@ class ForestCreate(BaseModel):
     name: str
     description: Optional[str] = None
     total_area: Optional[float] = None
+    forest_type: Optional[str] = None
     # GeoJSON polygon coordinates
     coordinates: List[List[List[float]]]
 
@@ -13,6 +14,7 @@ class ForestResponse(BaseModel):
     name: str
     description: Optional[str] = None
     total_area: Optional[float] = None
+    forest_type: Optional[str] = None
     geojson: Optional[dict] = None
 
 class SensorCreate(BaseModel):

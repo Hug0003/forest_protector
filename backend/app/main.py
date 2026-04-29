@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import forests, sensors
+from app.database import engine
+from sqlalchemy import text
 
 app = FastAPI(
     title="Forest Monitoring API",
@@ -24,3 +26,11 @@ app.include_router(forests.router, prefix="/api/v1", tags=["Forests"])
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "forest-monitoring-api"}
+
+@app.on_event("startup")
+async def startup_event():
+    async with engine.begin() as conn:
+        try:
+            await conn.execute(text("ALTER TABLE forests ADD COLUMN IF NOT EXISTS forest_type VARCHAR(100);"))
+        except Exception as e:
+            print(f"Migration error (could be ignored if column already exists): {e}")

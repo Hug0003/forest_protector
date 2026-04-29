@@ -14,7 +14,7 @@ router = APIRouter()
 async def list_forests(db: AsyncSession = Depends(get_db)):
     query = text("""
         SELECT
-            id, name, description, total_area,
+            id, name, description, total_area, forest_type,
             ST_AsGeoJSON(geom)::json AS geojson
         FROM forests
         ORDER BY id
@@ -27,6 +27,7 @@ async def list_forests(db: AsyncSession = Depends(get_db)):
             "name": row.name,
             "description": row.description,
             "total_area": row.total_area,
+            "forest_type": row.forest_type,
             "geojson": row.geojson,
         }
         for row in rows
@@ -36,7 +37,7 @@ async def list_forests(db: AsyncSession = Depends(get_db)):
 @router.get("/forests/{forest_id}")
 async def get_forest(forest_id: int, db: AsyncSession = Depends(get_db)):
     forest_query = text("""
-        SELECT id, name, description, total_area,
+        SELECT id, name, description, total_area, forest_type,
                ST_AsGeoJSON(geom)::json AS geojson
         FROM forests WHERE id = :id
     """)
@@ -67,6 +68,7 @@ async def get_forest(forest_id: int, db: AsyncSession = Depends(get_db)):
         "name": forest.name,
         "description": forest.description,
         "total_area": forest.total_area,
+        "forest_type": forest.forest_type,
         "geojson": forest.geojson,
         "sensors": [
             {
@@ -91,18 +93,19 @@ async def create_forest(payload: ForestCreate, db: AsyncSession = Depends(get_db
         "coordinates": [payload.coordinates],
     }
     query = text("""
-        INSERT INTO forests (name, description, total_area, geom)
+        INSERT INTO forests (name, description, total_area, forest_type, geom)
         VALUES (
-            :name, :description, :total_area,
+            :name, :description, :total_area, :forest_type,
             ST_SetSRID(ST_GeomFromGeoJSON(:geom), 4326)
         )
-        RETURNING id, name, description, total_area,
+        RETURNING id, name, description, total_area, forest_type,
                   ST_AsGeoJSON(geom)::json AS geojson
     """)
     result = await db.execute(query, {
         "name": payload.name,
         "description": payload.description,
         "total_area": payload.total_area,
+        "forest_type": payload.forest_type,
         "geom": json.dumps(geojson),
     })
     await db.commit()
@@ -112,6 +115,7 @@ async def create_forest(payload: ForestCreate, db: AsyncSession = Depends(get_db
         "name": row.name,
         "description": row.description,
         "total_area": row.total_area,
+        "forest_type": row.forest_type,
         "geojson": row.geojson,
     }
 

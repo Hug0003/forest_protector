@@ -8,6 +8,7 @@ export interface Forest {
   name: string;
   description?: string;
   total_area?: number;
+  forest_type?: string;
   geojson?: any;
   sensors?: any[];
 }
@@ -63,6 +64,7 @@ export class ForestService {
     name: string;
     description?: string;
     total_area?: number;
+    forest_type?: string;
     coordinates: number[][][];
   }): Promise<Forest> {
     return firstValueFrom(this.http.post<Forest>(`${this.api}/api/v1/forests`, data));

@@ -22,6 +22,7 @@ CREATE TABLE forests (
     owner_id INTEGER REFERENCES users(id),
     description TEXT,
     total_area FLOAT,
+    forest_type VARCHAR(100),
     geom GEOMETRY(MULTIPOLYGON, 4326),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

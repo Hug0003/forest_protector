@@ -1,11 +1,15 @@
-﻿<ion-header>
+<ion-header>
   <ion-toolbar color="success">
     <ion-buttons slot="start">
+      <ion-button *ngIf="!selectedForest" (click)="goHome()">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </ion-button>
       <ion-button *ngIf="selectedForest" (click)="closeForest()">
         <ion-icon name="close-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>{{ selectedForest ? selectedForest.name : "Carte des Forets" }}</ion-title>
+    <ion-title *ngIf="selectedForest">{{ selectedForest.name }} <span *ngIf="selectedForest.total_area">({{ selectedForest.total_area | number:'1.0-2' }} ha)</span></ion-title>
+    <ion-title *ngIf="!selectedForest">Carte des Forets</ion-title>
     <ion-buttons slot="end">
       <ion-button (click)="refresh()">
         <ion-icon name="refresh-outline"></ion-icon>
@@ -122,6 +126,19 @@
       <ion-item>
         <ion-label position="stacked">Description</ion-label>
         <ion-textarea [(ngModel)]="newForest.description" rows="3"></ion-textarea>
+      </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Type de forêt</ion-label>
+        <ion-select [(ngModel)]="newForest.forest_type" placeholder="Sélectionner le type">
+          <ion-select-option value="feuillus">Feuillus</ion-select-option>
+          <ion-select-option value="mixte">Mixte</ion-select-option>
+          <ion-select-option value="coniferes">Conifères</ion-select-option>
+          <ion-select-option value="taiga">Taïga</ion-select-option>
+          <ion-select-option value="temperee">Tempérée</ion-select-option>
+          <ion-select-option value="mediterraneenne">Méditerranéenne</ion-select-option>
+          <ion-select-option value="tropicale">Tropicale</ion-select-option>
+          <ion-select-option value="landes">Landes</ion-select-option>
+        </ion-select>
       </ion-item>
       <div *ngIf="calculatedAreaHa !== null" class="coords-info">
         Superficie calculée : {{ calculatedAreaHa | number:'1.0-2' }} ha

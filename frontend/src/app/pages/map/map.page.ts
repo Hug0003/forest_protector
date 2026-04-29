@@ -4,13 +4,13 @@ import { FormsModule } from "@angular/forms";
 import {
   IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonButtons,
   IonIcon, IonChip, IonModal, IonInput, IonItem, IonLabel, IonSelect,
-  IonSelectOption, IonTextarea, IonBadge
+  IonSelectOption, IonTextarea, IonBadge, ToastController, NavController
 } from "@ionic/angular/standalone";
 import { addIcons } from "ionicons";
 import {
   refreshOutline, addOutline, closeOutline,
-  leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline
-  , trashOutline
+  leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
+  trashOutline, arrowBackOutline
 } from "ionicons/icons";
 import * as L from "leaflet";
 import "leaflet-draw";
@@ -49,6 +49,7 @@ export class MapPage implements OnInit, AfterViewInit {
   selectedSensor: any = null;
   sensorMarkers: Map<number, L.Marker> = new Map();
   sensorDetectionOverlay: L.LayerGroup | null = null;
+  alertOverlays: L.LayerGroup | null = null;
   fireOverlay: L.LayerGroup | null = null;
   fireSimulationActive = false;
   firePoint: { lat: number; lng: number } | null = null;
@@ -66,9 +67,9 @@ export class MapPage implements OnInit, AfterViewInit {
   onMapContextMenuHandler: ((e: L.LeafletMouseEvent) => void) | null = null;
   calculatedAreaHa: number | null = null;
 
-  // Modal cr�ation for�t
+  // Modal cration fort
   showForestModal = false;
-  newForest = { name: "", description: "", total_area: null as number | null };
+  newForest = { name: "", description: "", forest_type: "", total_area: null as number | null };
 
   // Modal placement capteur
   showSensorModal = false;
@@ -79,13 +80,29 @@ export class MapPage implements OnInit, AfterViewInit {
 
   constructor(
     private forestService: ForestService,
-    private sensorService: SensorService
+    private sensorService: SensorService,
+    private toastCtrl: ToastController,
+    private navCtrl: NavController
   ) {
     addIcons({
       refreshOutline, addOutline, closeOutline,
-      leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline
-      , trashOutline
+      leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline,
+      trashOutline, arrowBackOutline
     });
+  }
+
+  async showToast(message: string, color: string = 'danger') {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 3000,
+      color,
+      position: 'bottom'
+    });
+    await toast.present();
+  }
+
+  goHome() {
+    this.navCtrl.navigateBack('/dashboard');
   }
 
   async ngOnInit() {
@@ -119,22 +136,23 @@ export class MapPage implements OnInit, AfterViewInit {
 
     this.map.invalidateSize(true);
 
-    // Layer pour les polygones dessin�s
+    // Layer pour les polygones dessins
     this.drawnItems = new L.FeatureGroup().addTo(this.map);
+    this.alertOverlays = new L.LayerGroup().addTo(this.map);
 
-    // Affiche les for�ts existantes
+    // Affiche les forts existantes
     this.drawForestLayers();
   }
 
   // ============================================================
-  // FOR�TS
+  // FORTS
   // ============================================================
   async loadForests() {
     try {
       this.forests = await this.forestService.getForests();
       if (this.map) this.drawForestLayers();
     } catch (err) {
-      console.error("Erreur chargement for�ts", err);
+      console.error("Erreur chargement forts", err);
     }
   }
 
@@ -179,15 +197,6 @@ export class MapPage implements OnInit, AfterViewInit {
 
     this.firePoint = point;
     this.fireOverlay = L.layerGroup();
-
-    L.circle([point.lat, point.lng], {
-      radius: radiusMeters,
-      color: "#f04545",
-      weight: 2,
-      fillColor: "#f04545",
-      fillOpacity: 0.12,
-      dashArray: "6 8"
-    }).addTo(this.fireOverlay);
 
     L.circleMarker([point.lat, point.lng], {
       radius: 10,
@@ -273,7 +282,7 @@ export class MapPage implements OnInit, AfterViewInit {
 
   finishDrawing() {
     if (this.drawingPoints.length < 3) {
-      alert("Vous devez tracer au moins 3 points");
+      this.showToast("Vous devez tracer au moins 3 points", "warning");
       return;
     }
 
@@ -338,7 +347,7 @@ export class MapPage implements OnInit, AfterViewInit {
 
     this.drawnItems.clearLayers();
     this.showForestModal = false;
-    this.newForest = { name: "", description: "", total_area: null };
+    this.newForest = { name: "", description: "", forest_type: "", total_area: null };
   }
 
   async saveForest() {
@@ -354,27 +363,28 @@ export class MapPage implements OnInit, AfterViewInit {
       const created = await this.forestService.createForest({
         name:        this.newForest.name,
         description: this.newForest.description,
+        forest_type: this.newForest.forest_type || undefined,
         total_area:  totalArea ?? undefined,
         coordinates: [coordinates]
       });
 
       this.forests.push(created);
       this.showForestModal = false;
-      this.newForest = { name: "", description: "", total_area: null };
+      this.newForest = { name: "", description: "", forest_type: "", total_area: null };
       this.calculatedAreaHa = null;
       this.drawnItems.clearLayers();
       this.mode = "view";
       this.drawForestLayers();
-      // S�lectionne automatiquement la for�t cr��e
+      // Slectionne automatiquement la fort cre
       await this.selectForest(created);
     } catch (err: any) {
-      console.error("Erreur cr�ation for�t", err);
-      alert(err?.error?.detail || "Erreur lors de la cr�ation de la for�t");
+      console.error("Erreur cration fort", err);
+      this.showToast(err?.error?.detail || "Erreur lors de la cration de la fort");
     }
   }
 
   async selectForest(forest: Forest) {
-    // Charge les d�tails avec capteurs
+    // Charge les dtails avec capteurs
     try {
       const detail = await this.forestService.getForest(forest.id);
       this.selectedForest = detail;
@@ -390,7 +400,7 @@ export class MapPage implements OnInit, AfterViewInit {
       if (layer) this.map.fitBounds((layer as L.GeoJSON).getBounds().pad(0.1));
     } catch (err: any) {
       console.error("Erreur chargement forêt", err);
-      alert(err?.error?.detail || "Erreur lors du chargement de la forêt");
+      this.showToast(err?.error?.detail || "Erreur lors du chargement de la forêt");
     }
   }
 
@@ -400,7 +410,6 @@ export class MapPage implements OnInit, AfterViewInit {
 
   async stopFireSimulation() {
     if (!this.selectedForest) return;
-    if (!confirm(`Arrêter la simulation sur la forêt "${this.selectedForest.name}" ?`)) return;
 
     try {
       const result = await this.forestService.stopFireSimulation(this.selectedForest.id);
@@ -408,10 +417,10 @@ export class MapPage implements OnInit, AfterViewInit {
       this.clearFireOverlay();
       await this.loadForests();
       await this.selectForest(this.selectedForest);
-      alert(`Simulation arrêtée. ${result.restored_sensors} capteur(s) remis en service.`);
+      this.showToast(`Simulation arrêtée. ${result.restored_sensors} capteur(s) remis en service.`, "success");
     } catch (err: any) {
       console.error("Erreur arrêt simulation feu", err);
-      alert(err?.error?.detail || "Erreur lors de l'arrêt de la simulation");
+      this.showToast(err?.error?.detail || "Erreur lors de l'arrêt de la simulation");
     }
   }
 
@@ -419,15 +428,13 @@ export class MapPage implements OnInit, AfterViewInit {
     this.selectedForest = null;
     this.mode = "view";
     this.clearSensorMarkers();
-    this.clearFireOverlay();
+    // Do not clear fireOverlay or fireSimulationActive to keep it visible
     this.clearSensorDetectionOverlay();
-    this.fireSimulationActive = false;
     this.selectedSensor = null;
   }
 
   async deleteForest() {
     if (!this.selectedForest) return;
-    if (!confirm(`Supprimer la for�t "${this.selectedForest.name}" ?`)) return;
     try {
       await this.forestService.deleteForest(this.selectedForest.id);
       this.forests = this.forests.filter(f => f.id !== this.selectedForest!.id);
@@ -435,23 +442,22 @@ export class MapPage implements OnInit, AfterViewInit {
       this.drawForestLayers();
     } catch (err: any) {
       console.error("Erreur suppression forêt", err);
-      alert(err?.error?.detail || "Erreur lors de la suppression de la forêt");
+      this.showToast(err?.error?.detail || "Erreur lors de la suppression de la forêt");
     }
   }
 
   async simulateFire() {
     if (!this.selectedForest) return;
-    if (!confirm(`Simuler un feu sur la for�t "${this.selectedForest.name}" ?`)) return;
 
     try {
       const result = await this.forestService.simulateFire(this.selectedForest.id);
       this.fireSimulationActive = true;      this.clearSensorDetectionOverlay();      this.drawFireOverlay(result.fire_point, result.radius_m || 1500);
       await this.loadForests();
       await this.selectForest(this.selectedForest);
-      alert(`Feu simulé sur ${result.affected_sensors} capteur(s). Un point de feu a été placé dans la forêt.`);
+      this.showToast(`Feu simulé sur ${result.affected_sensors} capteur(s). Un point de feu a été placé dans la forêt.`, "warning");
     } catch (err: any) {
       console.error("Erreur simulation feu", err);
-      alert(err?.error?.detail || "Erreur lors de la simulation du feu");
+      this.showToast(err?.error?.detail || "Erreur lors de la simulation du feu");
     }
   }
 
@@ -460,8 +466,23 @@ export class MapPage implements OnInit, AfterViewInit {
   // ============================================================
   drawSensorMarkers(sensors: any[]) {
     this.clearSensorMarkers();
+    if (this.alertOverlays) {
+      this.alertOverlays.clearLayers();
+    }
     sensors.forEach(sensor => {
       if (!sensor.lat || !sensor.lng) return;
+      
+      if (sensor.status === 'alert' && this.alertOverlays) {
+        L.circle([sensor.lat, sensor.lng], {
+          radius: this.SENSOR_DETECTION_RADIUS_M,
+          color: "#ffb300",
+          weight: 2,
+          fillColor: "#f04545",
+          fillOpacity: 0.15,
+          dashArray: "4 6"
+        }).addTo(this.alertOverlays);
+      }
+
       const marker = L.marker([sensor.lat, sensor.lng], {
         icon: this.getMarkerIcon(sensor.status)
       })
@@ -521,7 +542,6 @@ export class MapPage implements OnInit, AfterViewInit {
 
   async deleteSensor(sensor: any) {
     if (!sensor) return;
-    if (!confirm(`Supprimer le capteur "${sensor.uid}" de la forêt ?`)) return;
     try {
       await this.forestService.deleteSensor(sensor.id);
       // retire le marqueur
@@ -540,7 +560,7 @@ export class MapPage implements OnInit, AfterViewInit {
       }
     } catch (err: any) {
       console.error("Erreur suppression capteur", err);
-      alert(err?.error?.detail || "Erreur lors de la suppression du capteur");
+      this.showToast(err?.error?.detail || "Erreur lors de la suppression du capteur");
     }
   }
 
@@ -584,7 +604,7 @@ export class MapPage implements OnInit, AfterViewInit {
         notes:          this.newSensor.notes
       });
 
-      // Ajoute le marqueur imm�diatement
+      // Ajoute le marqueur immdiatement
       const marker = L.marker([created.lat, created.lng], {
         icon: this.getMarkerIcon("active")
       })
@@ -592,7 +612,7 @@ export class MapPage implements OnInit, AfterViewInit {
         .addTo(this.map);
       this.sensorMarkers.set(created.id, marker);
 
-      // Ajoute � la liste
+      // Ajoute  la liste
       if (this.selectedForest.sensors) {
         this.selectedForest.sensors.push(created);
       }
@@ -600,8 +620,8 @@ export class MapPage implements OnInit, AfterViewInit {
       this.showSensorModal = false;
       this.pendingSensorLatLng = null;
     } catch (err: any) {
-      console.error("Erreur cr�ation capteur", err);
-      alert(err?.error?.detail || "Erreur lors de la cr�ation du capteur");
+      console.error("Erreur cration capteur", err);
+      this.showToast(err?.error?.detail || "Erreur lors de la cration du capteur");
     }
   }
 
