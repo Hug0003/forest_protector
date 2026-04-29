@@ -234,11 +234,7 @@
       </ion-item>
       <ion-item>
         <ion-label position="stacked">Type de capteur</ion-label>
-        <ion-select [(ngModel)]="newSensor.sensor_type_id">
-          <ion-select-option [value]="1">Meteo complet</ion-select-option>
-          <ion-select-option [value]="2">Detecteur de fumee</ion-select-option>
-          <ion-select-option [value]="3">Capteur sol</ion-select-option>
-        </ion-select>
+        <ion-input [value]="'Capteur CO₂'" [readonly]="true"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label position="stacked">Notes</ion-label>
