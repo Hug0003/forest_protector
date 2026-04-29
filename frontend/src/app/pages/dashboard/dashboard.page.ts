@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent,
-  IonButtons, IonButton, IonChip, IonIcon, IonSegment, IonSegmentButton,
+  IonButtons, IonButton, IonChip, IonIcon,
   IonCard, IonCardContent, IonText, IonGrid, IonRow, IonCol
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -18,12 +18,11 @@ import { SensorService } from '../../services/sensor.service';
   imports: [
     CommonModule, RouterLink,
     IonHeader, IonToolbar, IonTitle, IonContent,
-    IonButtons, IonButton, IonChip, IonIcon, IonSegment, IonSegmentButton,
+    IonButtons, IonButton, IonChip, IonIcon,
     IonCard, IonCardContent, IonText, IonGrid, IonRow, IonCol
   ]
 })
 export class DashboardPage implements OnInit {
-  activeTab = 'overview';
   isLoading = true;
   
   stats = {
@@ -35,7 +34,7 @@ export class DashboardPage implements OnInit {
     avgHumidity: 0
   };
 
-  chartUrl = 'http://localhost:3000/d/technical-sensors?orgId=1&refresh=30s&kiosk=tv';
+
 
   constructor(private sensorService: SensorService) {
     addIcons({ mapOutline, refreshOutline, arrowBack });
@@ -78,7 +77,5 @@ export class DashboardPage implements OnInit {
     this.loadData();
   }
 
-  segmentChanged(event: any) {
-    this.activeTab = event.target.value;
-  }
+
 }
