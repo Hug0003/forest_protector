@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import forests, sensors, fire_prediction
+from app.api.v1 import forests, sensors, fire_prediction, alerts
 from app.database import engine
 from sqlalchemy import text
 
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(sensors.router, prefix="/api/v1", tags=["Sensors"])
 app.include_router(forests.router, prefix="/api/v1", tags=["Forests"])
 app.include_router(fire_prediction.router, prefix="/api/v1", tags=["Fire Prediction"])
+app.include_router(alerts.router, prefix="/api/v1", tags=["Alerts"])
 
 
 @app.get("/health")

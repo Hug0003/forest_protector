@@ -1,23 +1,30 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent,
   IonButtons, IonButton, IonIcon, IonList, IonItem, IonItemOption,
   IonItemOptions, IonItemSliding, IonLabel, IonBadge, IonText, IonSearchbar,
-  IonSegment, IonSegmentButton, IonCard, IonCardContent, IonItemDivider, IonChip
+  IonSegment, IonSegmentButton, IonCard, IonCardContent, IonItemDivider, IonChip,
+  IonSpinner, IonRefresher, IonRefresherContent
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { timeOutline, arrowBack } from 'ionicons/icons';
+import { timeOutline, arrowBack, refreshOutline, alertCircleOutline, checkmarkCircleOutline, trashOutline } from 'ionicons/icons';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../environments/environment';
 
-interface HistoryEvent {
+interface RealAlert {
   id: number;
-  timestamp: string;
-  type: 'alert' | 'offline' | 'online' | 'update' | 'error';
-  sensor: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  metric_value: number | null;
+  status: 'active' | 'acknowledged' | 'resolved';
+  triggered_at: string | null;
+  resolved_at: string | null;
+  sensor_uid: string | null;
+  forest_name: string | null;
 }
 
 @Component({
@@ -30,136 +37,121 @@ interface HistoryEvent {
     IonHeader, IonToolbar, IonTitle, IonContent,
     IonButtons, IonButton, IonIcon, IonList, IonItem, IonItemOption,
     IonItemOptions, IonItemSliding, IonLabel, IonBadge, IonText,
-    IonSearchbar, IonSegment, IonSegmentButton, IonCard, IonCardContent, IonItemDivider, IonChip
+    IonSearchbar, IonSegment, IonSegmentButton, IonCard, IonCardContent,
+    IonItemDivider, IonChip, IonSpinner, IonRefresher, IonRefresherContent
   ]
 })
 export class HistoryPage implements OnInit {
   activeTab = 'all';
   searchTerm = '';
-  
-  events: HistoryEvent[] = [
-    {
-      id: 1,
-      timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-      type: 'alert',
-      sensor: 'SENSOR003',
-      description: 'Alerte : Batterie faible (15%)',
-      severity: 'high'
-    },
-    {
-      id: 2,
-      timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-      type: 'offline',
-      sensor: 'SENSOR004',
-      description: 'Capteur hors ligne',
-      severity: 'high'
-    },
-    {
-      id: 3,
-      timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
-      type: 'online',
-      sensor: 'SENSOR002',
-      description: 'Capteur reconnecté',
-      severity: 'low'
-    },
-    {
-      id: 4,
-      timestamp: new Date(Date.now() - 1 * 3600000).toISOString(),
-      type: 'update',
-      sensor: 'SENSOR001',
-      description: 'Données reçues avec succès',
-      severity: 'low'
-    },
-    {
-      id: 5,
-      timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-      type: 'error',
-      sensor: 'SENSOR005',
-      description: 'Erreur de transmission',
-      severity: 'medium'
-    }
-  ];
+  isLoading = true;
+  alerts: RealAlert[] = [];
 
-  get filteredEvents(): HistoryEvent[] {
-    let filtered = this.events;
+  private api = environment.apiUrl;
 
-    if (this.activeTab !== 'all') {
-      filtered = filtered.filter(e => e.type === this.activeTab);
+  constructor(private http: HttpClient) {
+    addIcons({ timeOutline, arrowBack, refreshOutline, alertCircleOutline, checkmarkCircleOutline, trashOutline });
+  }
+
+  get filteredAlerts(): RealAlert[] {
+    let filtered = this.alerts;
+
+    if (this.activeTab === 'active') {
+      filtered = filtered.filter(a => a.status === 'active');
+    } else if (this.activeTab === 'critical') {
+      filtered = filtered.filter(a => a.severity === 'critical');
+    } else if (this.activeTab === 'resolved') {
+      filtered = filtered.filter(a => a.status === 'resolved');
     }
 
     if (this.searchTerm) {
-      filtered = filtered.filter(e =>
-        e.sensor.includes(this.searchTerm) ||
-        e.description.toLowerCase().includes(this.searchTerm.toLowerCase())
+      const term = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(a =>
+        (a.sensor_uid || '').toLowerCase().includes(term) ||
+        (a.message || '').toLowerCase().includes(term) ||
+        (a.forest_name || '').toLowerCase().includes(term)
       );
     }
 
     return filtered;
   }
 
-  constructor() {
-    addIcons({ timeOutline, arrowBack });
-  }
-
   ngOnInit() {
-    // Données chargées par défaut
+    this.loadAlerts();
   }
 
-  getTypeLabel(type: string): string {
-    const labels: any = {
-      'alert': 'Alerte',
-      'offline': 'Hors ligne',
-      'online': 'En ligne',
-      'update': 'Mise à jour',
-      'error': 'Erreur'
-    };
-    return labels[type] || type;
+  async loadAlerts() {
+    this.isLoading = true;
+    try {
+      const response = await firstValueFrom(
+        this.http.get<{ alerts: RealAlert[]; total: number }>(`${this.api}/api/v1/alerts`)
+      );
+      this.alerts = response.alerts;
+    } catch (error) {
+      console.error('Erreur chargement alertes:', error);
+      this.alerts = [];
+    } finally {
+      this.isLoading = false;
+    }
   }
 
-  getTypeColor(type: string): string {
-    const colors: any = {
-      'alert': 'danger',
-      'offline': 'warning',
-      'online': 'success',
-      'update': 'primary',
-      'error': 'danger'
-    };
-    return colors[type] || 'medium';
+  async handleRefresh(event: any) {
+    await this.loadAlerts();
+    event.target.complete();
   }
 
   getSeverityColor(severity: string): string {
     const colors: any = {
-      'high': 'danger',
-      'medium': 'warning',
-      'low': 'success'
+      'critical': 'danger',
+      'warning': 'warning',
+      'info': 'primary'
     };
     return colors[severity] || 'medium';
   }
 
-  formatTime(timestamp: string): string {
+  getSeverityLabel(severity: string): string {
+    const labels: any = {
+      'critical': '🔴 Critique',
+      'warning': '⚠️ Attention',
+      'info': 'ℹ️ Info'
+    };
+    return labels[severity] || severity;
+  }
+
+  getStatusColor(status: string): string {
+    const colors: any = {
+      'active': 'danger',
+      'acknowledged': 'warning',
+      'resolved': 'success'
+    };
+    return colors[status] || 'medium';
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: any = {
+      'active': 'Active',
+      'acknowledged': 'Traitée',
+      'resolved': 'Résolue'
+    };
+    return labels[status] || status;
+  }
+
+  formatTime(timestamp: string | null): string {
+    if (!timestamp) return '—';
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-
     if (minutes < 1) return 'À l\'instant';
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    if (days < 7) return `${days}j`;
-
-    return date.toLocaleDateString('fr-FR');
+    if (minutes < 60) return `il y a ${minutes}m`;
+    if (hours < 24) return `il y a ${hours}h`;
+    if (days < 7) return `il y a ${days}j`;
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
   segmentChanged(event: any) {
     this.activeTab = event.target.value;
-  }
-
-  clearHistory() {
-    if (confirm('Êtes-vous sûr de vouloir supprimer l\'historique ?')) {
-      this.events = [];
-    }
   }
 }
