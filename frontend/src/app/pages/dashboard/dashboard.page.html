@@ -1,0 +1,144 @@
+<ion-header>
+  <ion-toolbar color="success">
+    <ion-buttons slot="start">
+      <ion-button routerLink="/home">
+        <ion-icon name="arrow-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Tableau de Bord</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="refresh()">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-segment value="overview" (ionChange)="segmentChanged($event)">
+    <ion-segment-button value="overview">Vue Générale</ion-segment-button>
+    <ion-segment-button value="alerts">Alertes</ion-segment-button>
+    <ion-segment-button value="grafana">Grafana</ion-segment-button>
+  </ion-segment>
+
+  <div class="segment-content">
+    <!-- VUE GÉNÉRALE -->
+    <div *ngIf="activeTab === 'overview'">
+      <ion-grid>
+        <ion-row>
+          <ion-col size="12" size-sm="6">
+            <ion-card>
+              <ion-card-content>
+                <div class="stat-card">
+                  <ion-text color="primary">
+                    <h3>Capteurs Totaux</h3>
+                    <h1>{{ stats.totalSensors }}</h1>
+                  </ion-text>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </ion-col>
+
+          <ion-col size="12" size-sm="6">
+            <ion-card>
+              <ion-card-content>
+                <div class="stat-card">
+                  <ion-text color="success">
+                    <h3>Actifs</h3>
+                    <h1>{{ stats.activeSensors }}</h1>
+                  </ion-text>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </ion-col>
+
+          <ion-col size="12" size-sm="6">
+            <ion-card>
+              <ion-card-content>
+                <div class="stat-card">
+                  <ion-text color="warning">
+                    <h3>Hors ligne</h3>
+                    <h1>{{ stats.offlineSensors }}</h1>
+                  </ion-text>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </ion-col>
+
+          <ion-col size="12" size-sm="6">
+            <ion-card>
+              <ion-card-content>
+                <div class="stat-card">
+                  <ion-text color="danger">
+                    <h3>Alertes</h3>
+                    <h1>{{ stats.alertCount }}</h1>
+                  </ion-text>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </ion-col>
+        </ion-row>
+
+        <ion-row>
+          <ion-col size="12" size-sm="6">
+            <ion-card>
+              <ion-card-content>
+                <ion-text>
+                  <p>Température Moyenne</p>
+                  <h2>{{ stats.avgTemperature }}°C</h2>
+                </ion-text>
+              </ion-card-content>
+            </ion-card>
+          </ion-col>
+
+          <ion-col size="12" size-sm="6">
+            <ion-card>
+              <ion-card-content>
+                <ion-text>
+                  <p>Humidité Moyenne</p>
+                  <h2>{{ stats.avgHumidity }}%</h2>
+                </ion-text>
+              </ion-card-content>
+            </ion-card>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </div>
+
+    <!-- ALERTES -->
+    <div *ngIf="activeTab === 'alerts'" class="alerts-section">
+      <ion-card *ngIf="stats.alertCount === 0">
+        <ion-card-content>
+          <ion-text color="success">
+            <p style="text-align: center;">✓ Aucune alerte pour le moment</p>
+          </ion-text>
+        </ion-card-content>
+      </ion-card>
+
+      <ion-card *ngIf="stats.alertCount > 0">
+        <ion-card-content>
+          <ion-text color="danger">
+            <h3>{{ stats.alertCount }} alerte(s) active(s)</h3>
+            <p>Consultez la page "Historique" pour plus de détails</p>
+          </ion-text>
+        </ion-card-content>
+      </ion-card>
+    </div>
+
+    <!-- GRAFANA -->
+    <div *ngIf="activeTab === 'grafana'" class="grafana-section">
+      <ion-card>
+        <ion-card-content>
+          <ion-text>
+            <p style="text-align: center;">📊 Tableau Grafana disponible à :</p>
+            <p style="text-align: center;">
+              <a href="http://localhost:3000" target="_blank" color="primary">
+                http://localhost:3000
+              </a>
+            </p>
+          </ion-text>
+        </ion-card-content>
+      </ion-card>
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,89 @@
+<ion-header>
+  <ion-toolbar color="success">
+    <ion-title>🌲 Accueil</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="welcome-header">
+    <h1>Bienvenue</h1>
+    <p>Plateforme de surveillance des capteurs forestiers</p>
+  </div>
+
+  <div *ngIf="isLoading" style="display: flex; justify-content: center; align-items: center; height: 200px;">
+    <ion-spinner color="success"></ion-spinner>
+  </div>
+
+  <div *ngIf="!isLoading">
+    <!-- Statistics Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🟢</div>
+        <p class="stat-value active">{{ activeSensors }}</p>
+        <p class="stat-label">Actifs</p>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">🔴</div>
+        <p class="stat-value alert">{{ alertsCount }}</p>
+        <p class="stat-label">Alertes</p>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">⚠️</div>
+        <p class="stat-value offline">{{ offlineSensors }}</p>
+        <p class="stat-label">Hors ligne</p>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <p class="stat-value">{{ totalSensors }}</p>
+        <p class="stat-label">Total</p>
+      </div>
+    </div>
+
+    <!-- Navigation Cards -->
+    <div class="nav-grid">
+      <a routerLink="/dashboard" class="nav-card">
+        <div class="nav-icon">📈</div>
+        <p class="nav-label">Tableau de Bord</p>
+      </a>
+
+      <a routerLink="/map" class="nav-card">
+        <div class="nav-icon">🗺️</div>
+        <p class="nav-label">Carte</p>
+      </a>
+
+      <a routerLink="/history" class="nav-card">
+        <div class="nav-icon">📜</div>
+        <p class="nav-label">Historique</p>
+      </a>
+
+      <a routerLink="/profile" class="nav-card">
+        <div class="nav-icon">⚙️</div>
+        <p class="nav-label">Profil</p>
+      </a>
+    </div>
+
+    <!-- Alerts Section -->
+    <div class="alerts-section" *ngIf="recentAlerts.length > 0">
+      <p class="section-title">Alertes Récentes</p>
+      <div class="alerts-list">
+        <div *ngFor="let alert of recentAlerts" class="alert-item" [class.critical]="alert.severity === 'critical'">
+          <div class="alert-icon">{{ alert.severity === 'critical' ? '🔴' : '⚠️' }}</div>
+          <div class="alert-content">
+            <p class="alert-title">{{ alert.title }}</p>
+            <p class="alert-message">{{ alert.message }}</p>
+          </div>
+          <div class="alert-time">{{ alert.time }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>© 2024 Système de Monitoring Forêt</p>
+      <p>Version 1.0.0</p>
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,244 @@
+ion-content {
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+.history-header {
+  background: linear-gradient(135deg, #f4a261 0%, #e76f51 100%);
+  color: white;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(231, 111, 81, 0.2);
+
+  h2 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 13px;
+  }
+}
+
+.filter-bar {
+  background: white;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  ion-segment {
+    flex: 1;
+    min-width: auto;
+
+    --padding-bottom: 0;
+    --padding-top: 0;
+  }
+}
+
+.event-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .event-card {
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border-left: 4px solid #e8e8e8;
+
+    &:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      transform: translateY(-2px);
+    }
+
+    &.error {
+      border-left-color: #f04545;
+
+      .event-header {
+        background: #fff5f5;
+      }
+    }
+
+    &.warning {
+      border-left-color: #ffc409;
+
+      .event-header {
+        background: #fffbf0;
+      }
+    }
+
+    &.info {
+      border-left-color: #0066cc;
+
+      .event-header {
+        background: #f0f7ff;
+      }
+    }
+
+    &.success {
+      border-left-color: #2dd36f;
+
+      .event-header {
+        background: #f0fdf4;
+      }
+    }
+
+    .event-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+
+      .event-severity {
+        font-size: 20px;
+        flex-shrink: 0;
+
+        &.error { content: "🔴"; }
+        &.warning { content: "⚠️"; }
+        &.info { content: "ℹ️"; }
+        &.success { content: "✅"; }
+      }
+
+      .event-title {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+      }
+
+      .event-time {
+        font-size: 11px;
+        color: #999;
+        flex-shrink: 0;
+      }
+    }
+
+    .event-body {
+      padding: 12px;
+
+      .event-message {
+        font-size: 12px;
+        color: #666;
+        margin: 0 0 8px 0;
+        line-height: 1.4;
+      }
+
+      .event-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        font-size: 11px;
+
+        .detail-item {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+
+          .detail-label {
+            color: #999;
+            font-weight: 600;
+            text-transform: uppercase;
+          }
+
+          .detail-value {
+            color: #333;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+
+    .event-footer {
+      padding: 8px 12px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fafafa;
+
+      .event-zone {
+        font-size: 11px;
+        color: #666;
+        font-weight: 600;
+      }
+
+      .event-actions {
+        display: flex;
+        gap: 6px;
+
+        ion-button {
+          --padding-start: 8px;
+          --padding-end: 8px;
+          height: 24px;
+          font-size: 10px;
+          margin: 0;
+        }
+      }
+    }
+  }
+}
+
+.no-events {
+  padding: 48px 16px;
+  text-align: center;
+
+  .no-events-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .no-events-text {
+    font-size: 14px;
+    color: #999;
+    margin: 0;
+    font-weight: 500;
+  }
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #999;
+
+  ion-spinner {
+    --color: #f4a261;
+    margin-bottom: 12px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 768px) {
+  .event-list {
+    padding: 24px;
+  }
+
+  .event-card {
+    .event-body {
+      .event-details {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+  }
+}
+

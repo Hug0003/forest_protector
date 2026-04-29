@@ -1,0 +1,255 @@
+<ion-header>
+  <ion-toolbar color="success">
+    <ion-buttons slot="start">
+      <ion-button *ngIf="!selectedForest" (click)="goHome()">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </ion-button>
+      <ion-button *ngIf="selectedForest" (click)="closeForest()">
+        <ion-icon name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title *ngIf="selectedForest">{{ selectedForest.name }} <span *ngIf="selectedForest.total_area">({{ selectedForest.total_area | number:'1.0-2' }} ha)</span></ion-title>
+    <ion-title *ngIf="!selectedForest">Carte des Forets</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="refresh()">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<!-- Barre d actions (hors ion-content) -->
+<div class="action-bar">
+  <ng-container *ngIf="mode === 'view'">
+    <button class="action-btn primary" (click)="startDrawForest()">
+      <ion-icon name="add-outline"></ion-icon>
+      Creer une foret
+    </button>
+    <span class="action-hint">Cliquez sur une foret pour la selectionner</span>
+  </ng-container>
+  <ng-container *ngIf="mode === 'draw_forest'">
+    <span class="action-hint drawing">Dessinez le contour (cliquez sur le dernier point pour terminer)</span>
+    <button class="action-btn primary" [disabled]="drawingPoints.length < 3 || !isDrawing" (click)="finishDrawing()">
+      <ion-icon name="checkmark-outline"></ion-icon>
+      Terminer
+    </button>
+    <button class="action-btn danger" (click)="cancelDraw()">Annuler</button>
+  </ng-container>
+  <ng-container *ngIf="mode === 'view_forest' && selectedForest">
+    <button class="action-btn primary" (click)="startPlaceSensor()">
+      <ion-icon name="hardware-chip-outline"></ion-icon>
+      Placer un capteur
+    </button>
+    <button class="action-btn warning" (click)="simulateFire()">
+      <ion-icon name="flame-outline"></ion-icon>
+      Simuler un feu
+    </button>
+    <button class="action-btn primary" *ngIf="fireSimulationActive && !propagationSimulationActive" (click)="startPropagationSimulation()">
+      <ion-icon name="trending-up-outline"></ion-icon>
+      Simuler la propagation
+    </button>
+    <button class="action-btn warning" *ngIf="propagationSimulationActive" (click)="stopPropagationSimulation()">
+      <ion-icon name="pause-outline"></ion-icon>
+      Arrêter la propagation
+    </button>
+    <button class="action-btn danger" *ngIf="isFireSimulationActive()" (click)="stopFireSimulation()">
+      <ion-icon name="close-outline"></ion-icon>
+      Arrêter la simulation
+    </button>
+    <button class="action-btn danger" (click)="deleteForest()">Supprimer</button>
+  </ng-container>
+  <ng-container *ngIf="mode === 'place_sensor'">
+    <span class="action-hint drawing">Cliquez sur la carte pour placer le capteur...</span>
+    <button class="action-btn danger" (click)="cancelSensor()">Annuler</button>
+  </ng-container>
+</div>
+
+<!-- Carte Leaflet -->
+<div #mapContainer id="mapContainer"></div>
+
+<!-- Panneau scrollable -->
+<div class="panels-area">
+
+  <!-- Capteurs de la foret selectionnee -->
+  <div *ngIf="selectedForest">
+    <div class="panel-header">
+      <h3>Capteurs <ion-badge color="success">{{ selectedForest.sensors?.length || 0 }}</ion-badge></h3>
+    </div>
+    <div *ngIf="!selectedForest.sensors?.length" class="empty-state">
+      Aucun capteur - cliquez "Placer un capteur"
+    </div>
+    <div *ngFor="let sensor of selectedForest.sensors"
+         class="sensor-item"
+         [class.selected]="selectedSensor?.id === sensor.id"
+         (click)="selectSensor(sensor)">
+      <div class="sensor-dot" [style.background]="getStatusColor(sensor.status)"></div>
+      <div class="sensor-info">
+        <h4>{{ sensor.uid }}</h4>
+        <p>{{ getStatusLabel(sensor.status) }}</p>
+      </div>
+      <div class="sensor-actions">
+        <ion-button fill="clear" size="small" color="danger" *ngIf="selectedSensor?.id === sensor.id" (click)="deleteSensor(sensor); $event.stopPropagation()">
+          <ion-icon name="trash-outline"></ion-icon>
+        </ion-button>
+        <ion-chip [color]="sensor.status === 'active' ? 'success' : sensor.status === 'alert' ? 'danger' : 'warning'">
+          {{ getStatusLabel(sensor.status) }}
+        </ion-chip>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulation de propagation -->
+  <div *ngIf="fireSimulationActive" class="propagation-card">
+    <div class="propagation-card__header">
+      <h3>Propagation du feu</h3>
+      <ion-chip [color]="propagationSimulationActive ? 'warning' : 'medium'">
+        {{ propagationSimulationActive ? 'En cours' : 'Prête' }}
+      </ion-chip>
+    </div>
+    <div class="propagation-summary">
+      <div>
+        <span>Direction</span>
+        <strong>{{ propagationResult?.predicted_spread_direction_label || '—' }}</strong>
+      </div>
+      <div>
+        <span>Vitesse</span>
+        <strong>{{ propagationResult ? (propagationResult.predicted_spread_speed_m_per_h | number:'1.0-0') + ' m/h' : '—' }}</strong>
+      </div>
+      <div>
+        <span>Temps simulé</span>
+        <strong>{{ getPropagationElapsedLabel() }}</strong>
+      </div>
+      <div>
+        <span>Distance</span>
+        <strong>{{ propagationCurrentDistanceM | number:'1.0-0' }} m</strong>
+      </div>
+    </div>
+    <p class="propagation-scale">Échelle de temps: 1 s = {{ propagationTimeScaleMinutesPerSecond }} min simulée</p>
+    <div class="propagation-params" *ngIf="propagationResult">
+      <div><span>Météo</span><strong>{{ propagationWeatherLabel }}</strong></div>
+      <div><span>Température</span><strong>{{ propagationWeatherTemperatureC | number:'1.0-0' }} °C</strong></div>
+      <div><span>Vent</span><strong>{{ propagationWeatherWindSpeedKmh | number:'1.0-0' }} km/h</strong></div>
+      <div><span>Direction vent</span><strong>{{ propagationWeatherWindDirectionDeg | number:'1.0-0' }}°</strong></div>
+      <div><span>Humidité forêt</span><strong>{{ propagationWeatherHumidityPct | number:'1.0-0' }}%</strong></div>
+      <div><span>Zone d'origine</span><strong>{{ propagationResult.origin_zone }}</strong></div>
+      <div><span>Confiance</span><strong>{{ propagationResult.confidence | number:'1.0-2' }}</strong></div>
+      <div><span>Risque</span><strong>{{ propagationResult.risk_level }}</strong></div>
+    </div>
+    <p *ngIf="propagationResult" class="propagation-explanation">{{ propagationResult.explanation }}</p>
+    <div class="modal-actions propagation-actions">
+      <button class="action-btn primary" *ngIf="!propagationSimulationActive" (click)="startPropagationSimulation()">
+        <ion-icon name="play-outline"></ion-icon>
+        Lancer la propagation
+      </button>
+      <button class="action-btn warning" *ngIf="propagationSimulationActive" (click)="stopPropagationSimulation(false)">
+        <ion-icon name="pause-outline"></ion-icon>
+        Pause
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="mode === 'view'">
+    <div class="panel-header">
+      <h3>Forets <ion-badge color="success">{{ forests.length }}</ion-badge></h3>
+    </div>
+    <div *ngIf="!forests.length" class="empty-state">
+      Aucune foret - creez-en une !
+    </div>
+    <div *ngFor="let forest of forests" class="forest-item" (click)="selectForest(forest)">
+      <ion-icon name="leaf-outline" color="success"></ion-icon>
+      <div class="forest-info">
+        <h4>{{ forest.name }}</h4>
+        <p>{{ forest.description || "Aucune description" }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL creation foret -->
+<ion-modal [isOpen]="showForestModal" (didDismiss)="cancelDraw()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="success">
+        <ion-title>Nouvelle Foret</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="cancelDraw()"><ion-icon name="close-outline"></ion-icon></ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <ion-item>
+        <ion-label position="stacked">Nom *</ion-label>
+        <ion-input [(ngModel)]="newForest.name" placeholder="Ex: Foret de Broceliande"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Description</ion-label>
+        <ion-textarea [(ngModel)]="newForest.description" rows="3"></ion-textarea>
+      </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Type de forêt</ion-label>
+        <ion-select [(ngModel)]="newForest.forest_type" placeholder="Sélectionner le type">
+          <ion-select-option value="feuillus">Feuillus</ion-select-option>
+          <ion-select-option value="mixte">Mixte</ion-select-option>
+          <ion-select-option value="coniferes">Conifères</ion-select-option>
+          <ion-select-option value="taiga">Taïga</ion-select-option>
+          <ion-select-option value="temperee">Tempérée</ion-select-option>
+          <ion-select-option value="mediterraneenne">Méditerranéenne</ion-select-option>
+          <ion-select-option value="tropicale">Tropicale</ion-select-option>
+          <ion-select-option value="landes">Landes</ion-select-option>
+        </ion-select>
+      </ion-item>
+      <div *ngIf="calculatedAreaHa !== null" class="coords-info">
+        Superficie calculée : {{ calculatedAreaHa | number:'1.0-2' }} ha
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn" (click)="cancelDraw()">Annuler</button>
+        <button class="action-btn primary" (click)="saveForest()" [disabled]="!newForest.name">
+          <ion-icon name="checkmark-outline"></ion-icon>
+          Creer la foret
+        </button>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL placement capteur -->
+<ion-modal [isOpen]="showSensorModal" (didDismiss)="cancelSensor()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="success">
+        <ion-title>Nouveau Capteur</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="cancelSensor()"><ion-icon name="close-outline"></ion-icon></ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <ion-item>
+        <ion-label position="stacked">Identifiant unique *</ion-label>
+        <ion-input [(ngModel)]="newSensor.uid" placeholder="Ex: SENSOR-001"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Type de capteur</ion-label>
+        <ion-select [(ngModel)]="newSensor.sensor_type_id">
+          <ion-select-option [value]="1">Meteo complet</ion-select-option>
+          <ion-select-option [value]="2">Detecteur de fumee</ion-select-option>
+          <ion-select-option [value]="3">Capteur sol</ion-select-option>
+        </ion-select>
+      </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Notes</ion-label>
+        <ion-textarea [(ngModel)]="newSensor.notes" rows="2"></ion-textarea>
+      </ion-item>
+      <div *ngIf="pendingSensorLatLng" class="coords-info">
+        Position : {{ pendingSensorLatLng.lat.toFixed(5) }}, {{ pendingSensorLatLng.lng.toFixed(5) }}
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn" (click)="cancelSensor()">Annuler</button>
+        <button class="action-btn primary" (click)="saveSensor()" [disabled]="!newSensor.uid">
+          <ion-icon name="checkmark-outline"></ion-icon>
+          Placer le capteur
+        </button>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>
