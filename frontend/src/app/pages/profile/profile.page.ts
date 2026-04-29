@@ -4,13 +4,17 @@ import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent,
-  IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonButton, IonIcon,
-  IonList, IonItem, IonLabel, IonToggle, IonText,
-  IonInput, IonGrid, IonRow, IonCol, IonButtons,
-  AlertController
+  IonButton, IonIcon,
+  IonList, IonItem, IonLabel, IonNote,
+  IonButtons, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { logOutOutline, settingsOutline, arrowBack } from 'ionicons/icons';
+import { 
+  logOutOutline, arrowBack, personCircleOutline, mailOutline, 
+  businessOutline, shieldCheckmarkOutline, lockClosedOutline, 
+  keyOutline, fingerPrintOutline, helpBuoyOutline, 
+  documentTextOutline, chatboxEllipsesOutline 
+} from 'ionicons/icons';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -21,9 +25,9 @@ import { AuthService } from '../../services/auth.service';
   imports: [
     CommonModule, RouterLink, FormsModule,
     IonHeader, IonToolbar, IonTitle, IonContent,
-    IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonButton, IonIcon,
-    IonList, IonItem, IonLabel, IonToggle, IonText,
-    IonInput, IonGrid, IonRow, IonCol, IonButtons
+    IonButton, IonIcon,
+    IonList, IonItem, IonLabel, IonNote,
+    IonButtons
   ]
 })
 export class ProfilePage implements OnInit {
@@ -46,7 +50,12 @@ export class ProfilePage implements OnInit {
     private router: Router,
     private alertController: AlertController
   ) {
-    addIcons({ logOutOutline, settingsOutline, arrowBack });
+    addIcons({ 
+      logOutOutline, arrowBack, personCircleOutline, mailOutline, 
+      businessOutline, shieldCheckmarkOutline, lockClosedOutline, 
+      keyOutline, fingerPrintOutline, helpBuoyOutline, 
+      documentTextOutline, chatboxEllipsesOutline 
+    });
   }
 
   ngOnInit() {
