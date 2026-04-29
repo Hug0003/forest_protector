@@ -1,20 +1,20 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import os
 from datetime import datetime
-from app.config import settings
 
 class EmailService:
     @staticmethod
     def send_fire_alert(forest_name: str, sensor_uid: str, location: dict):
-        smtp_host = settings.SMTP_HOST
-        smtp_port = settings.SMTP_PORT
-        smtp_user = settings.SMTP_USER
-        smtp_password = settings.SMTP_PASSWORD
-        smtp_dest = settings.SMTP_DESTINATION
+        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        smtp_port = int(os.getenv("SMTP_PORT", 587))
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_password = os.getenv("SMTP_PASSWORD")
+        smtp_dest = os.getenv("SMTP_DESTINATION")
 
         if not all([smtp_user, smtp_password, smtp_dest]):
-            print("Email credentials missing in settings/env")
+            print("Email credentials missing in .env")
             return False
 
         subject = f"🔥 ALERTE INCENDIE - {forest_name}"
