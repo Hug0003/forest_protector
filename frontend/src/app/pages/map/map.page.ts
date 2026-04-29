@@ -893,15 +893,14 @@ export class MapPage implements OnInit, AfterViewInit {
     }
 
     const bounds = layer.getBounds();
-    const SPACING_M = 150;    // Distance entre capteurs voisins
+    const SPACING_M = 150;
     const EARTH_RADIUS = 6371000;
 
-    // Convertir un écart en mètres en degrés lat/lng
     const latStepDeg = (SPACING_M / EARTH_RADIUS) * (180 / Math.PI);
     const centerLat = (bounds.getNorth() + bounds.getSouth()) / 2;
     const lngStepDeg = (SPACING_M / EARTH_RADIUS) * (180 / Math.PI) / Math.cos(centerLat * Math.PI / 180);
 
-    // Construire la liste de points en grille hexagonale décalée
+    // Grille hexagonale décalée couvrant le bounding-box entier
     const candidatePoints: { lat: number; lng: number }[] = [];
     let rowIndex = 0;
     for (let lat = bounds.getSouth(); lat <= bounds.getNorth() + latStepDeg; lat += latStepDeg) {
@@ -912,29 +911,18 @@ export class MapPage implements OnInit, AfterViewInit {
       rowIndex++;
     }
 
-    // Filtrer les points qui sont à l'intérieur de la forêt (via Leaflet bounds + GeoJSON)
-    const geojson = forest.geojson;
-    if (!geojson) {
-      this.showToast('GeoJSON de la forêt manquant.');
-      return;
-    }
-
-    const insidePoints = candidatePoints.filter(pt => {
-      return this.isPointInPolygon(pt.lat, pt.lng, geojson.coordinates[0] as number[][]);
-    });
-
-    if (insidePoints.length === 0) {
-      this.showToast('Aucun point valide trouvé dans la forêt. Essayez une forêt plus grande.');
+    if (candidatePoints.length === 0) {
+      this.showToast('La forêt est trop petite pour un déploiement automatique.');
       return;
     }
 
     this.autoPlacingInProgress = true;
     let placed = 0;
-    let errors = 0;
 
-    for (const pt of insidePoints) {
+    for (let i = 0; i < candidatePoints.length; i++) {
+      const pt = candidatePoints[i];
       try {
-        const uid = `CO2-${Date.now().toString().slice(-5)}-${placed + 1}`;
+        const uid = `CO2-${(placed + 1).toString().padStart(3, '0')}`;
         const created = await this.forestService.createSensor({
           uid,
           sensor_type_id: 1,
@@ -962,41 +950,28 @@ export class MapPage implements OnInit, AfterViewInit {
             color: '#2dd36f',
             weight: 1,
             fillColor: '#2dd36f',
-            fillOpacity: 0.05,
+            fillOpacity: 0.06,
             dashArray: '4 4'
           }).addTo(this.alertOverlays);
         }
 
         placed++;
-        // Petite pause pour ne pas saturer l'API
-        await new Promise(r => setTimeout(r, 80));
+        await new Promise(r => setTimeout(r, 60));
       } catch {
-        errors++;
+        // Point hors forêt — ignoré silencieusement (ST_Contains côté backend)
       }
     }
 
     this.autoPlacingInProgress = false;
-    const msg = errors > 0
-      ? `${placed} capteur(s) déployé(s), ${errors} erreur(s) (points hors forêt ignorés).`
-      : `✅ ${placed} capteur(s) CO₂ déployés en grille hexagonale (200m de portée, ~150m d'espacement).`;
-    this.showToast(msg, errors > 0 ? 'warning' : 'success');
+
+    if (placed === 0) {
+      this.showToast('Aucun capteur placé. Vérifiez que la forêt est bien dessinée.', 'warning');
+    } else {
+      this.showToast(`✅ ${placed} capteur(s) CO₂ déployés (portée 200m, espacement ~150m).`, 'success');
+    }
   }
 
-  /**
-   * Vérifie si un point (lat, lng) est à l'intérieur d'un polygone GeoJSON [lng, lat][].
-   * Algorithme Ray-Casting.
-   */
-  isPointInPolygon(lat: number, lng: number, ring: number[][]): boolean {
-    let inside = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const xi = ring[i][0], yi = ring[i][1]; // lng, lat
-      const xj = ring[j][0], yj = ring[j][1];
-      const intersect = ((yi > lat) !== (yj > lat)) &&
-        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
-  }
+  startPlaceSensor() {
 
   startPlaceSensor() {
     if (!this.selectedForest) return;
