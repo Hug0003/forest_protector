@@ -1,20 +1,22 @@
 import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import { RouterLink } from "@angular/router";
+import { FormsModule } from "@angular/forms";
 import {
-  IonHeader, IonToolbar, IonTitle, IonContent,
-  IonButton, IonButtons, IonIcon, IonChip, IonSpinner,
-  IonCard, IonCardContent, IonCardHeader, IonCardTitle
+  IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonButtons,
+  IonIcon, IonChip, IonModal, IonInput, IonItem, IonLabel, IonSelect,
+  IonSelectOption, IonTextarea, IonBadge
 } from "@ionic/angular/standalone";
 import { addIcons } from "ionicons";
-import { arrowBackOutline, refreshOutline } from "ionicons/icons";
-import { SensorService } from "../../services/sensor.service";
+import {
+  refreshOutline, addOutline, closeOutline,
+  leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline
+} from "ionicons/icons";
 import * as L from "leaflet";
+import "leaflet-draw";
+import { ForestService, Forest } from "../../services/forest.service";
+import { SensorService } from "../../services/sensor.service";
 
-interface SensorMarker {
-  sensor: any;
-  marker: L.Marker;
-}
+type MapMode = "view" | "draw_forest" | "view_forest" | "place_sensor";
 
 @Component({
   selector: "app-map",
@@ -22,29 +24,65 @@ interface SensorMarker {
   styleUrls: ["./map.page.scss"],
   standalone: true,
   imports: [
-    CommonModule, RouterLink,
-    IonHeader, IonToolbar, IonTitle, IonContent,
-    IonButton, IonButtons, IonIcon, IonChip, IonSpinner,
-    IonCard, IonCardContent, IonCardHeader, IonCardTitle
+    CommonModule, FormsModule,
+    IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonButtons,
+    IonIcon, IonChip,
+    IonModal, IonInput, IonItem, IonLabel, IonSelect, IonSelectOption,
+    IonTextarea, IonBadge
   ]
 })
 export class MapPage implements OnInit, AfterViewInit {
   @ViewChild("mapContainer", { read: ElementRef }) mapContainer!: ElementRef;
 
-  sensors: any[] = [];
-  isLoading = true;
-  selectedSensor: any = null;
-  showDetails = false;
+  // Carte
   map!: L.Map;
-  sensorMarkers: SensorMarker[] = [];
-  forestLayer!: L.GeoJSON;
+  mode: MapMode = "view";
 
-  constructor(private sensorService: SensorService) {
-    addIcons({ arrowBackOutline, refreshOutline });
+  // For�ts
+  forests: Forest[] = [];
+  selectedForest: Forest | null = null;
+  forestLayers: Map<number, L.Layer> = new Map();
+
+  // Capteurs
+  sensors: any[] = [];
+  selectedSensor: any = null;
+  sensorMarkers: Map<number, L.Marker> = new Map();
+
+  // Dessin polygone
+  drawnItems!: L.FeatureGroup;
+  drawControl!: any;
+  drawnPolygon: any = null;
+  drawingPoints: L.LatLng[] = [];
+  drawingPolyline: L.Polyline | null = null;
+  drawingMarkers: L.Layer[] = [];
+  isDrawing = false;
+  onMapClickHandler: ((e: L.LeafletMouseEvent) => void) | null = null;
+  onMapContextMenuHandler: ((e: L.LeafletMouseEvent) => void) | null = null;
+  calculatedAreaHa: number | null = null;
+
+  // Modal cr�ation for�t
+  showForestModal = false;
+  newForest = { name: "", description: "", total_area: null as number | null };
+
+  // Modal placement capteur
+  showSensorModal = false;
+  pendingSensorLatLng: L.LatLng | null = null;
+  newSensor = {
+    uid: "", sensor_type_id: 1, notes: ""
+  };
+
+  constructor(
+    private forestService: ForestService,
+    private sensorService: SensorService
+  ) {
+    addIcons({
+      refreshOutline, addOutline, closeOutline,
+      leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline
+    });
   }
 
-  ngOnInit() {
-    this.loadSensors();
+  async ngOnInit() {
+    await this.loadForests();
   }
 
   ngAfterViewInit() {
@@ -52,177 +90,446 @@ export class MapPage implements OnInit, AfterViewInit {
   }
 
   ionViewDidEnter() {
-    if (this.map) this.map.invalidateSize();
+    if (this.map) {
+      setTimeout(() => this.map.invalidateSize(true), 100);
+    }
   }
 
+  // ============================================================
+  // INITIALISATION CARTE
+  // ============================================================
   initMap() {
-    if (!this.mapContainer?.nativeElement) return;
-    if (this.map) return;
+    if (!this.mapContainer?.nativeElement || this.map) return;
 
     this.map = L.map(this.mapContainer.nativeElement, {
       center: [46.2276, 2.2137],
-      zoom: 6,
-      renderer: L.canvas()
+      zoom: 5
     });
 
-    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap"
+    }).addTo(this.map);
+
+    this.map.invalidateSize(true);
+
+    // Layer pour les polygones dessin�s
+    this.drawnItems = new L.FeatureGroup().addTo(this.map);
+
+    // Affiche les for�ts existantes
+    this.drawForestLayers();
+  }
+
+  // ============================================================
+  // FOR�TS
+  // ============================================================
+  async loadForests() {
+    try {
+      this.forests = await this.forestService.getForests();
+      if (this.map) this.drawForestLayers();
+    } catch (err) {
+      console.error("Erreur chargement for�ts", err);
+    }
+  }
+
+  drawForestLayers() {
+    // Supprime les anciens layers
+    this.forestLayers.forEach(layer => this.map.removeLayer(layer));
+    this.forestLayers.clear();
+
+    this.forests.forEach(forest => {
+      if (!forest.geojson) return;
+
+      const layer = L.geoJSON(
+        { type: "Feature", geometry: forest.geojson, properties: {} } as any,
+        {
+          style: {
+            color:       "#2dd36f",
+            weight:      2,
+            opacity:     0.8,
+            fillColor:   "#2dd36f",
+            fillOpacity: 0.15
+          }
+        }
+      )
+        .bindTooltip(forest.name, { permanent: true, direction: "center" })
+        .on("click", () => this.selectForest(forest))
+        .addTo(this.map);
+
+      this.forestLayers.set(forest.id, layer);
+    });
+  }
+
+  // Mode dessin polygone
+  startDrawForest() {
+    if (!this.map) return;
+
+    if (this.onMapClickHandler) this.map.off("click", this.onMapClickHandler);
+    if (this.onMapContextMenuHandler) this.map.off("contextmenu", this.onMapContextMenuHandler);
+
+    this.mode = "draw_forest";
+    this.isDrawing = true;
+    this.calculatedAreaHa = null;
+    this.drawnItems.clearLayers();
+    this.drawnPolygon = null;
+    this.drawingPoints = [];
+    this.drawingMarkers = [];
+
+    this.drawingPolyline = L.polyline([], {
+      color: "#2dd36f",
+      weight: 2,
+      opacity: 0.9
+    }).addTo(this.drawnItems);
+
+    this.onMapClickHandler = (e: L.LeafletMouseEvent) => {
+      if (!this.isDrawing) return;
+
+      const point = e.latlng;
+      this.drawingPoints.push(point);
+
+      const marker = L.circleMarker(point, {
+        radius: 5,
+        color: "#2dd36f",
+        weight: 2,
+        fillColor: "#ffffff",
+        fillOpacity: 1
+      }).addTo(this.drawnItems);
+
+      marker.on("click", () => {
+        const lastMarker = this.drawingMarkers[this.drawingMarkers.length - 1];
+        if (lastMarker === marker && this.drawingPoints.length >= 3) {
+          this.finishDrawing();
+        }
+      });
+
+      this.drawingMarkers.push(marker);
+      this.updatePolyline();
+    };
+
+    this.onMapContextMenuHandler = () => {
+      this.removeLastPoint();
+    };
+
+    this.map.on("click", this.onMapClickHandler);
+    this.map.on("contextmenu", this.onMapContextMenuHandler);
+  }
+  updatePolyline() {
+    if (this.drawingPolyline) {
+      this.drawingPolyline.setLatLngs(this.drawingPoints);
+    }
+  }
+
+  removeLastPoint() {
+    if (this.drawingPoints.length === 0 || !this.isDrawing) return;
+
+    this.drawingPoints.pop();
+    const marker = this.drawingMarkers.pop();
+    if (marker) {
+      this.drawnItems.removeLayer(marker);
+    }
+    this.updatePolyline();
+  }
+
+  finishDrawing() {
+    if (this.drawingPoints.length < 3) {
+      alert("Vous devez tracer au moins 3 points");
+      return;
+    }
+
+    this.isDrawing = false;
+    this.calculatedAreaHa = this.calculateAreaHa(this.drawingPoints);
+
+    // Creer le polygone final
+    this.drawnPolygon = L.polygon(this.drawingPoints, {
+      color: "#2dd36f",
+      weight: 2,
+      opacity: 0.8,
+      fill: true,
+      fillColor: "#2dd36f",
+      fillOpacity: 0.2
     });
 
-    const satellite = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      { attribution: "© Esri" }
-    );
-
-    const forestOverlay = this.createForestLayer();
-
-    osm.addTo(this.map);
-    forestOverlay.addTo(this.map);
-
-    L.control.layers(
-      { "Plan": osm, "Satellite": satellite },
-      { "Forêts": forestOverlay },
-      { collapsed: false, position: 'topright' }
-    ).addTo(this.map);
-
-    if (this.sensors.length > 0) this.addSensorMarkers();
-  }
-
-  async loadSensors() {
-    this.isLoading = true;
-    try {
-      this.sensors = await this.sensorService.getSensors();
-    } catch (error) {
-      console.error("Erreur chargement capteurs � mode d�mo activ�");
-      this.sensors = [
-        { id: 1, uid: "SENSOR-001", status: "active",  lat: 48.8566, lng: 2.3522, zone_id: 1, battery_level: 85,  last_seen: "2 min" },
-        { id: 2, uid: "SENSOR-002", status: "active",  lat: 48.8600, lng: 2.3500, zone_id: 1, battery_level: 92,  last_seen: "5 min" },
-        { id: 3, uid: "SENSOR-003", status: "alert",   lat: 48.8550, lng: 2.3550, zone_id: 2, battery_level: 15,  last_seen: "1 min" },
-        { id: 4, uid: "SENSOR-004", status: "offline", lat: 48.8580, lng: 2.3600, zone_id: 2, battery_level: 5,   last_seen: "45 min" },
-        { id: 5, uid: "SENSOR-005", status: "active",  lat: 46.5197, lng: 2.2137, zone_id: 3, battery_level: 78,  last_seen: "10 min" }
-      ];
+    // Nettoyer les marqueurs et polyline temporaires
+    this.drawingMarkers.forEach(m => this.drawnItems.removeLayer(m));
+    this.drawingMarkers = [];
+    if (this.drawingPolyline) {
+      this.drawnItems.removeLayer(this.drawingPolyline);
+      this.drawingPolyline = null;
     }
-    this.isLoading = false;
-    if (this.map) this.addSensorMarkers();
+
+    // Ajouter le polygone final
+    this.drawnItems.addLayer(this.drawnPolygon);
+
+    // Desactiver les evenements
+    if (this.onMapClickHandler) this.map.off("click", this.onMapClickHandler);
+    if (this.onMapContextMenuHandler) this.map.off("contextmenu", this.onMapContextMenuHandler);
+
+    // Afficher la modal
+    this.showForestModal = true;
   }
 
-  addSensorMarkers() {
-    if (!this.map) return;
-    this.sensorMarkers.forEach(sm => this.map.removeLayer(sm.marker));
-    this.sensorMarkers = [];
+  calculateAreaHa(points: L.LatLng[]): number | null {
+    if (!points || points.length < 3) return null;
 
-    this.sensors.forEach(sensor => {
+    const geometryUtil = (L as any).GeometryUtil;
+    if (geometryUtil?.geodesicArea) {
+      const areaM2 = geometryUtil.geodesicArea(points);
+      if (Number.isFinite(areaM2)) {
+        return Math.round((areaM2 / 10000) * 100) / 100;
+      }
+    }
+
+    return null;
+  }
+
+  cancelDraw() {
+    this.mode = "view";
+    this.isDrawing = false;
+    this.drawingPoints = [];
+    this.drawingMarkers = [];
+    this.drawingPolyline = null;
+    this.drawnPolygon = null;
+    this.calculatedAreaHa = null;
+
+    // Désactiver les événements
+    if (this.onMapClickHandler) this.map.off("click", this.onMapClickHandler);
+    if (this.onMapContextMenuHandler) this.map.off("contextmenu", this.onMapContextMenuHandler);
+
+    this.drawnItems.clearLayers();
+    this.showForestModal = false;
+    this.newForest = { name: "", description: "", total_area: null };
+  }
+
+  async saveForest() {
+    if (!this.drawnPolygon || !this.newForest.name) return;
+
+    const latlngs = this.drawnPolygon.getLatLngs()[0] as L.LatLng[];
+    const coordinates: number[][] = latlngs.map((ll: L.LatLng) => [ll.lng, ll.lat]);
+    // Ferme le polygone
+    coordinates.push(coordinates[0]);
+    const totalArea = this.calculatedAreaHa ?? this.calculateAreaHa(latlngs);
+
+    try {
+      const created = await this.forestService.createForest({
+        name:        this.newForest.name,
+        description: this.newForest.description,
+        total_area:  totalArea ?? undefined,
+        coordinates: [coordinates]
+      });
+
+      this.forests.push(created);
+      this.showForestModal = false;
+      this.newForest = { name: "", description: "", total_area: null };
+      this.calculatedAreaHa = null;
+      this.drawnItems.clearLayers();
+      this.mode = "view";
+      this.drawForestLayers();
+      // S�lectionne automatiquement la for�t cr��e
+      await this.selectForest(created);
+    } catch (err) {
+      console.error("Erreur cr�ation for�t", err);
+      alert("Erreur lors de la cr�ation de la for�t");
+    }
+  }
+
+  async selectForest(forest: Forest) {
+    // Charge les d�tails avec capteurs
+    try {
+      const detail = await this.forestService.getForest(forest.id);
+      this.selectedForest = detail;
+      this.mode = "view_forest";
+      this.drawSensorMarkers(detail.sensors || []);
+
+      // Zoom sur la for�t
+      const layer = this.forestLayers.get(forest.id);
+      if (layer) this.map.fitBounds((layer as L.GeoJSON).getBounds().pad(0.1));
+    } catch (err) {
+      console.error("Erreur chargement for�t", err);
+    }
+  }
+
+  isFireSimulationActive(): boolean {
+    return !!this.selectedForest?.sensors?.some(sensor => sensor.status === "alert");
+  }
+
+  async stopFireSimulation() {
+    if (!this.selectedForest) return;
+    if (!confirm(`Arrêter la simulation sur la forêt "${this.selectedForest.name}" ?`)) return;
+
+    try {
+      const result = await this.forestService.stopFireSimulation(this.selectedForest.id);
+      await this.loadForests();
+      await this.selectForest(this.selectedForest);
+      alert(`Simulation arrêtée. ${result.restored_sensors} capteur(s) remis en service.`);
+    } catch (err: any) {
+      console.error("Erreur arrêt simulation feu", err);
+      alert(err?.error?.detail || "Erreur lors de l'arrêt de la simulation");
+    }
+  }
+
+  closeForest() {
+    this.selectedForest = null;
+    this.mode = "view";
+    this.clearSensorMarkers();
+    this.selectedSensor = null;
+  }
+
+  async deleteForest() {
+    if (!this.selectedForest) return;
+    if (!confirm(`Supprimer la for�t "${this.selectedForest.name}" ?`)) return;
+    try {
+      await this.forestService.deleteForest(this.selectedForest.id);
+      this.forests = this.forests.filter(f => f.id !== this.selectedForest!.id);
+      this.closeForest();
+      this.drawForestLayers();
+    } catch (err) {
+      console.error("Erreur suppression for�t", err);
+    }
+  }
+
+  async simulateFire() {
+    if (!this.selectedForest) return;
+    if (!confirm(`Simuler un feu sur la for�t "${this.selectedForest.name}" ?`)) return;
+
+    try {
+      const result = await this.forestService.simulateFire(this.selectedForest.id);
+      await this.loadForests();
+      await this.selectForest(this.selectedForest);
+      alert(`Feu simul� sur ${result.affected_sensors} capteur(s). Les capteurs sont pass�s en alerte.`);
+    } catch (err: any) {
+      console.error("Erreur simulation feu", err);
+      alert(err?.error?.detail || "Erreur lors de la simulation du feu");
+    }
+  }
+
+  // ============================================================
+  // CAPTEURS
+  // ============================================================
+  drawSensorMarkers(sensors: any[]) {
+    this.clearSensorMarkers();
+    sensors.forEach(sensor => {
       if (!sensor.lat || !sensor.lng) return;
       const marker = L.marker([sensor.lat, sensor.lng], {
         icon: this.getMarkerIcon(sensor.status)
       })
         .bindPopup(this.createPopupContent(sensor))
+        .on("click", () => this.selectSensor(sensor))
         .addTo(this.map);
-
-      marker.on("click", () => this.selectSensor(sensor));
-      this.sensorMarkers.push({ sensor, marker });
+      this.sensorMarkers.set(sensor.id, marker);
     });
+  }
 
-    if (this.sensorMarkers.length > 0) {
-      const group = new L.FeatureGroup(this.sensorMarkers.map(sm => sm.marker));
-      this.map.fitBounds(group.getBounds().pad(0.1));
+  selectSensor(sensor: any) {
+    this.selectedSensor = sensor;
+    const marker = this.sensorMarkers.get(sensor.id);
+    if (marker) {
+      this.map.setView(marker.getLatLng(), Math.max(this.map.getZoom(), 14), {
+        animate: true
+      });
+      marker.openPopup();
     }
   }
 
+  clearSensorMarkers() {
+    this.sensorMarkers.forEach(m => this.map.removeLayer(m));
+    this.sensorMarkers.clear();
+  }
+
+  startPlaceSensor() {
+    if (!this.selectedForest) return;
+    this.mode = "place_sensor";
+
+    // Curseur crosshair
+    this.map.getContainer().style.cursor = "crosshair";
+
+    this.map.once("click", (e: L.LeafletMouseEvent) => {
+      this.map.getContainer().style.cursor = "";
+      this.pendingSensorLatLng = e.latlng;
+      this.newSensor = { uid: `SENSOR-${Date.now().toString().slice(-4)}`, sensor_type_id: 1, notes: "" };
+      this.showSensorModal = true;
+      this.mode = "view_forest";
+    });
+  }
+
+  cancelSensor() {
+    this.showSensorModal = false;
+    this.pendingSensorLatLng = null;
+    this.mode = "view_forest";
+    this.map.getContainer().style.cursor = "";
+  }
+
+  async saveSensor() {
+    if (!this.selectedForest || !this.pendingSensorLatLng) return;
+    try {
+      const created = await this.forestService.createSensor({
+        uid:            this.newSensor.uid,
+        sensor_type_id: this.newSensor.sensor_type_id,
+        forest_id:      this.selectedForest.id,
+        lat:            this.pendingSensorLatLng.lat,
+        lng:            this.pendingSensorLatLng.lng,
+        notes:          this.newSensor.notes
+      });
+
+      // Ajoute le marqueur imm�diatement
+      const marker = L.marker([created.lat, created.lng], {
+        icon: this.getMarkerIcon("active")
+      })
+        .bindPopup(`<b>${created.uid}</b><br>Statut : Actif`)
+        .addTo(this.map);
+      this.sensorMarkers.set(created.id, marker);
+
+      // Ajoute � la liste
+      if (this.selectedForest.sensors) {
+        this.selectedForest.sensors.push(created);
+      }
+
+      this.showSensorModal = false;
+      this.pendingSensorLatLng = null;
+    } catch (err: any) {
+      console.error("Erreur cr�ation capteur", err);
+      alert(err?.error?.detail || "Erreur lors de la cr�ation du capteur");
+    }
+  }
+
+  // ============================================================
+  // UTILITAIRES
+  // ============================================================
   getMarkerIcon(status: string): L.Icon {
     const colors: Record<string, string> = {
-      active:  "#2dd36f",
-      alert:   "#f04545",
-      offline: "#ffc409"
+      active: "#2dd36f", alert: "#f04545", offline: "#ffc409"
     };
     const color = colors[status] || "#999";
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40"><path d="M16 0C9.4 0 4 5.4 4 12c0 8 12 28 12 28s12-20 12-28c0-6.6-5.4-12-12-12z" fill="${color}" stroke="white" stroke-width="1"/><circle cx="16" cy="12" r="5" fill="white"/></svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40">
+      <path d="M16 0C9.4 0 4 5.4 4 12c0 8 12 28 12 28s12-20 12-28c0-6.6-5.4-12-12-12z"
+            fill="${color}" stroke="white" stroke-width="1"/>
+      <circle cx="16" cy="12" r="5" fill="white"/>
+    </svg>`;
     return L.icon({
-      iconUrl: `data:image/svg+xml;base64,${btoa(svg)}`,
+      iconUrl:     `data:image/svg+xml;base64,${btoa(svg)}`,
       iconSize:    [32, 40],
       iconAnchor:  [16, 40],
       popupAnchor: [0, -40]
     });
   }
 
-  createForestLayer(): L.GeoJSON {
-    const forestGeoJson: any = {
-      type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          properties: { name: 'Forêt de Fontainebleau', type: 'Forêt domaniale', area: '25 000 ha' },
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[[2.5, 48.2], [2.8, 48.2], [2.8, 48.0], [2.5, 48.0], [2.5, 48.2]]]
-          }
-        },
-        {
-          type: 'Feature',
-          properties: { name: 'Forêt de Rambouillet', type: 'Forêt domaniale', area: '22 000 ha' },
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[[1.5, 48.7], [1.8, 48.7], [1.8, 48.5], [1.5, 48.5], [1.5, 48.7]]]
-          }
-        }
-      ]
-    };
-
-    return L.geoJSON(forestGeoJson, {
-      style: (feature: any) => ({
-        color: '#2d8c35',
-        fillColor: '#70b468',
-        weight: 1.5,
-        fillOpacity: 0.45
-      }),
-      onEachFeature: (feature: any, layer: L.Layer) => {
-        layer.bindPopup(`
-          <strong>${feature.properties.name}</strong><br>
-          Type: ${feature.properties.type}<br>
-          Superficie: ${feature.properties.area}
-        `);
-      }
-    });
-  }
-
   createPopupContent(sensor: any): string {
     return `
-      <div style="font-size:13px;min-width:150px;padding:4px">
+      <div style="font-size:13px;min-width:140px;padding:4px">
         <strong>${sensor.uid}</strong><br>
-        <span style="color:${this.getStatusColor(sensor.status)}">? ${this.getStatusLabel(sensor.status)}</span><br>
-        Zone : ${sensor.zone_id}<br>
-        Batterie : ${sensor.battery_level}%<br>
-        Vu : ${sensor.last_seen}
+        <span style="color:${this.getStatusColor(sensor.status)}">
+          ? ${this.getStatusLabel(sensor.status)}
+        </span><br>
+        ${sensor.battery_level ? `Batterie : ${sensor.battery_level.toFixed(0)}%<br>` : ""}
+        ${sensor.last_seen ? `Vu : ${new Date(sensor.last_seen).toLocaleString("fr-FR")}` : ""}
       </div>`;
   }
 
-  selectSensor(sensor: any) {
-    this.selectedSensor = sensor;
-    this.showDetails = false;
-    const sm = this.sensorMarkers.find(s => s.sensor.id === sensor.id);
-    if (sm) {
-      sm.marker.openPopup();
-      this.map.panTo(sm.marker.getLatLng());
-    }
-  }
-
-  toggleDetails() {
-    this.showDetails = !this.showDetails;
-  }
-
   getStatusColor(status: string): string {
-    const map: Record<string, string> = {
-      active: "#2dd36f", alert: "#f04545", offline: "#ffc409"
-    };
-    return map[status] || "#999";
+    return ({ active: "#2dd36f", alert: "#f04545", offline: "#ffc409" } as any)[status] || "#999";
   }
 
   getStatusLabel(status: string): string {
-    const map: Record<string, string> = {
-      active: "Actif", alert: "Alerte", offline: "Hors ligne"
-    };
-    return map[status] || status;
+    return ({ active: "Actif", alert: "Alerte", offline: "Hors ligne" } as any)[status] || status;
   }
 
-  refresh() { this.loadSensors(); }
+  refresh() { this.loadForests(); }
 }
