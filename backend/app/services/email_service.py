@@ -8,7 +8,8 @@ class EmailService:
     @staticmethod
     def send_fire_alert(forest_name: str, sensor_uid: str, location: dict):
         smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", 587))
+        smtp_port_raw = os.getenv("SMTP_PORT", "587")
+        smtp_port = int(smtp_port_raw) if smtp_port_raw and smtp_port_raw.isdigit() else 587
         smtp_user = os.getenv("SMTP_USER")
         smtp_password = os.getenv("SMTP_PASSWORD")
         smtp_dest = os.getenv("SMTP_DESTINATION")
