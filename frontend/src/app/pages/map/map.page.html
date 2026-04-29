@@ -75,9 +75,14 @@
         <h4>{{ sensor.uid }}</h4>
         <p>{{ getStatusLabel(sensor.status) }}</p>
       </div>
-      <ion-chip [color]="sensor.status === 'active' ? 'success' : sensor.status === 'alert' ? 'danger' : 'warning'">
-        {{ getStatusLabel(sensor.status) }}
-      </ion-chip>
+      <div class="sensor-actions">
+        <ion-button fill="clear" size="small" color="danger" *ngIf="selectedSensor?.id === sensor.id" (click)="deleteSensor(sensor); $event.stopPropagation()">
+          <ion-icon name="trash-outline"></ion-icon>
+        </ion-button>
+        <ion-chip [color]="sensor.status === 'active' ? 'success' : sensor.status === 'alert' ? 'danger' : 'warning'">
+          {{ getStatusLabel(sensor.status) }}
+        </ion-chip>
+      </div>
     </div>
   </div>
 

@@ -10,6 +10,7 @@ import { addIcons } from "ionicons";
 import {
   refreshOutline, addOutline, closeOutline,
   leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline
+  , trashOutline
 } from "ionicons/icons";
 import * as L from "leaflet";
 import "leaflet-draw";
@@ -47,6 +48,9 @@ export class MapPage implements OnInit, AfterViewInit {
   sensors: any[] = [];
   selectedSensor: any = null;
   sensorMarkers: Map<number, L.Marker> = new Map();
+  fireOverlay: L.LayerGroup | null = null;
+  fireSimulationActive = false;
+  firePoint: { lat: number; lng: number } | null = null;
 
   // Dessin polygone
   drawnItems!: L.FeatureGroup;
@@ -78,6 +82,7 @@ export class MapPage implements OnInit, AfterViewInit {
     addIcons({
       refreshOutline, addOutline, closeOutline,
       leafOutline, hardwareChipOutline, checkmarkOutline, flameOutline
+      , trashOutline
     });
   }
 
@@ -157,6 +162,41 @@ export class MapPage implements OnInit, AfterViewInit {
 
       this.forestLayers.set(forest.id, layer);
     });
+  }
+
+  clearFireOverlay() {
+    if (this.fireOverlay) {
+      this.fireOverlay.removeFrom(this.map);
+      this.fireOverlay = null;
+    }
+    this.firePoint = null;
+  }
+
+  drawFireOverlay(point: { lat: number; lng: number }, radiusMeters: number) {
+    this.clearFireOverlay();
+
+    this.firePoint = point;
+    this.fireOverlay = L.layerGroup();
+
+    L.circle([point.lat, point.lng], {
+      radius: radiusMeters,
+      color: "#f04545",
+      weight: 2,
+      fillColor: "#f04545",
+      fillOpacity: 0.12,
+      dashArray: "6 8"
+    }).addTo(this.fireOverlay);
+
+    L.circleMarker([point.lat, point.lng], {
+      radius: 10,
+      color: "#ffffff",
+      weight: 2,
+      fillColor: "#f04545",
+      fillOpacity: 1
+    }).addTo(this.fireOverlay);
+
+    this.fireOverlay.addTo(this.map);
+    this.map.setView([point.lat, point.lng], Math.max(this.map.getZoom(), 13), { animate: true });
   }
 
   // Mode dessin polygone
@@ -338,6 +378,9 @@ export class MapPage implements OnInit, AfterViewInit {
       this.selectedForest = detail;
       this.mode = "view_forest";
       this.drawSensorMarkers(detail.sensors || []);
+      if (this.fireSimulationActive && this.firePoint) {
+        this.drawFireOverlay(this.firePoint, 1500);
+      }
 
       // Zoom sur la for�t
       const layer = this.forestLayers.get(forest.id);
@@ -348,7 +391,7 @@ export class MapPage implements OnInit, AfterViewInit {
   }
 
   isFireSimulationActive(): boolean {
-    return !!this.selectedForest?.sensors?.some(sensor => sensor.status === "alert");
+    return this.fireSimulationActive;
   }
 
   async stopFireSimulation() {
@@ -357,6 +400,8 @@ export class MapPage implements OnInit, AfterViewInit {
 
     try {
       const result = await this.forestService.stopFireSimulation(this.selectedForest.id);
+      this.fireSimulationActive = false;
+      this.clearFireOverlay();
       await this.loadForests();
       await this.selectForest(this.selectedForest);
       alert(`Simulation arrêtée. ${result.restored_sensors} capteur(s) remis en service.`);
@@ -370,6 +415,8 @@ export class MapPage implements OnInit, AfterViewInit {
     this.selectedForest = null;
     this.mode = "view";
     this.clearSensorMarkers();
+    this.clearFireOverlay();
+    this.fireSimulationActive = false;
     this.selectedSensor = null;
   }
 
@@ -392,9 +439,11 @@ export class MapPage implements OnInit, AfterViewInit {
 
     try {
       const result = await this.forestService.simulateFire(this.selectedForest.id);
+      this.fireSimulationActive = true;
+      this.drawFireOverlay(result.fire_point, result.radius_m || 1500);
       await this.loadForests();
       await this.selectForest(this.selectedForest);
-      alert(`Feu simul� sur ${result.affected_sensors} capteur(s). Les capteurs sont pass�s en alerte.`);
+      alert(`Feu simulé sur ${result.affected_sensors} capteur(s). Un point de feu a été placé dans la forêt.`);
     } catch (err: any) {
       console.error("Erreur simulation feu", err);
       alert(err?.error?.detail || "Erreur lors de la simulation du feu");
@@ -426,6 +475,28 @@ export class MapPage implements OnInit, AfterViewInit {
         animate: true
       });
       marker.openPopup();
+    }
+  }
+
+  async deleteSensor(sensor: any) {
+    if (!sensor) return;
+    if (!confirm(`Supprimer le capteur "${sensor.uid}" de la forêt ?`)) return;
+    try {
+      await this.forestService.deleteSensor(sensor.id);
+      // retire le marqueur
+      const marker = this.sensorMarkers.get(sensor.id);
+      if (marker) {
+        this.map.removeLayer(marker);
+        this.sensorMarkers.delete(sensor.id);
+      }
+      // retire de la liste
+      if (this.selectedForest?.sensors) {
+        this.selectedForest.sensors = this.selectedForest.sensors.filter((s: any) => s.id !== sensor.id);
+      }
+      if (this.selectedSensor?.id === sensor.id) this.selectedSensor = null;
+    } catch (err) {
+      console.error("Erreur suppression capteur", err);
+      alert("Erreur lors de la suppression du capteur");
     }
   }
 

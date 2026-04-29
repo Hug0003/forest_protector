@@ -199,7 +199,58 @@ async def simulate_fire(forest_id: int, db: AsyncSession = Depends(get_db)):
     if not sensors:
         raise HTTPException(status_code=400, detail="No sensors available in this forest")
 
-    affected_sensor_ids: list[int] = []
+    detection_radius_m = 1500.0
+
+    point_result = await db.execute(
+        text("""
+            SELECT ST_AsGeoJSON(
+                ST_SetSRID(
+                    COALESCE(
+                        ST_GeometryN(ST_GeneratePoints(geom, 1), 1),
+                        ST_PointOnSurface(geom)
+                    ),
+                    4326
+                )
+            )::json AS fire_point_geojson
+            FROM forests
+            WHERE id = :forest_id
+        """),
+        {"forest_id": forest_id}
+    )
+    point_row = point_result.fetchone()
+    if not point_row or not point_row.fire_point_geojson:
+        raise HTTPException(status_code=500, detail="Unable to generate fire point")
+
+    fire_point_geojson = point_row.fire_point_geojson
+    fire_point_lng, fire_point_lat = fire_point_geojson["coordinates"]
+    fire_point_json = json.dumps({"type": "Point", "coordinates": [fire_point_lng, fire_point_lat]})
+
+    affected_sensors_result = await db.execute(
+        text("""
+            SELECT
+                s.id,
+                s.uid,
+                s.zone_id,
+                ST_Distance(
+                    s.location::geography,
+                    ST_SetSRID(ST_GeomFromGeoJSON(:fire_point_geojson), 4326)::geography
+                ) AS distance_m
+            FROM sensors s
+            WHERE s.forest_id = :forest_id
+              AND ST_DWithin(
+                  s.location::geography,
+                  ST_SetSRID(ST_GeomFromGeoJSON(:fire_point_geojson), 4326)::geography,
+                  :radius_m
+              )
+            ORDER BY distance_m ASC
+        """),
+        {
+            "forest_id": forest_id,
+            "fire_point_geojson": fire_point_json,
+            "radius_m": detection_radius_m,
+        }
+    )
+    affected_sensors = affected_sensors_result.fetchall()
 
     rule_result = await db.execute(
         text("""
@@ -214,8 +265,7 @@ async def simulate_fire(forest_id: int, db: AsyncSession = Depends(get_db)):
     )
     smoke_rule = rule_result.fetchone()
 
-    for sensor in sensors:
-        affected_sensor_ids.append(sensor.id)
+    for sensor in affected_sensors:
         await db.execute(
             text("""
                 INSERT INTO sensor_data (
@@ -240,7 +290,9 @@ async def simulate_fire(forest_id: int, db: AsyncSession = Depends(get_db)):
                 "raw_data": json.dumps({
                     "simulation": "fire",
                     "forest_id": forest_id,
-                    "sensor_uid": sensor.uid
+                    "sensor_uid": sensor.uid,
+                    "fire_radius_m": detection_radius_m,
+                    "distance_m": sensor.distance_m,
                 })
             }
         )
@@ -276,12 +328,18 @@ async def simulate_fire(forest_id: int, db: AsyncSession = Depends(get_db)):
     return {
         "forest_id": forest.id,
         "forest_name": forest.name,
-        "affected_sensors": len(affected_sensor_ids),
+        "affected_sensors": len(affected_sensors),
+        "affected_sensor_ids": [sensor.id for sensor in affected_sensors],
         "status": "simulated_fire_triggered",
         "temperature": 48.0,
         "smoke_level": 92.0,
         "air_humidity": 18.0,
         "soil_moisture": 8.0,
+        "radius_m": detection_radius_m,
+        "fire_point": {
+            "lat": fire_point_lat,
+            "lng": fire_point_lng,
+        },
     }
 
 
@@ -297,11 +355,13 @@ async def stop_fire_simulation(forest_id: int, db: AsyncSession = Depends(get_db
 
     sensors_result = await db.execute(
         text("""
-            SELECT id, uid, zone_id
-            FROM sensors
-            WHERE forest_id = :forest_id
-              AND status = 'alert'
-            ORDER BY id
+            SELECT DISTINCT s.id, s.uid, s.zone_id
+            FROM sensors s
+            JOIN alerts a ON a.sensor_id = s.id
+            WHERE s.forest_id = :forest_id
+              AND a.status = 'active'
+              AND a.message LIKE 'Fire simulation detected on sensor %'
+            ORDER BY s.id
         """),
         {"forest_id": forest_id}
     )
@@ -355,6 +415,7 @@ async def stop_fire_simulation(forest_id: int, db: AsyncSession = Depends(get_db
               AND sensor_id IN (
                   SELECT id FROM sensors WHERE forest_id = :forest_id
               )
+              AND message LIKE 'Fire simulation detected on sensor %'
         """),
         {"forest_id": forest_id}
     )

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from typing import Optional
@@ -93,3 +93,25 @@ async def get_zone_average(
     db: AsyncSession = Depends(get_db)
 ):
     return await AggregationService.get_zone_average(db, zone_id, metric)
+
+
+@router.delete("/sensors/{sensor_id}")
+async def delete_sensor(
+    sensor_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Détache un capteur de sa forêt/zone sans supprimer les données historiques.
+    Met à jour `forest_id` et `zone_id` à NULL et positionne le statut à 'removed'.
+    """
+    query = text("""
+        UPDATE sensors
+        SET forest_id = NULL, zone_id = NULL, status = 'maintenance'
+        WHERE id = :id
+        RETURNING id, uid
+    """)
+    result = await db.execute(query, {"id": sensor_id})
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sensor not found")
+    await db.commit()
+    return {"sensor_id": row.id, "uid": row.uid, "status": "maintenance"}

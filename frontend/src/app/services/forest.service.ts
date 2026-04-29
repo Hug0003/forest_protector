@@ -25,11 +25,17 @@ export interface FireSimulationResult {
   forest_id: number;
   forest_name: string;
   affected_sensors: number;
+  affected_sensor_ids: number[];
   status: string;
   temperature: number;
   smoke_level: number;
   air_humidity: number;
   soil_moisture: number;
+  radius_m: number;
+  fire_point: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export interface StopFireSimulationResult {
@@ -68,6 +74,10 @@ export class ForestService {
 
   async createSensor(data: SensorCreate): Promise<any> {
     return firstValueFrom(this.http.post(`${this.api}/api/v1/sensors`, data));
+  }
+
+  async deleteSensor(id: number): Promise<any> {
+    return firstValueFrom(this.http.delete(`${this.api}/api/v1/sensors/${id}`));
   }
 
   async simulateFire(forestId: number): Promise<FireSimulationResult> {
