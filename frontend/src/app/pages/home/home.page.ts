@@ -35,7 +35,8 @@ export class HomePage implements OnInit {
 
   async ngOnInit() {
     try {
-      const sensors = await this.sensorService.getSensors();
+      const allSensors = await this.sensorService.getSensors();
+      const sensors = allSensors.filter(s => s.status !== 'maintenance' && s.status !== 'stolen');
       this.totalSensors = sensors.length;
       this.activeSensors = sensors.filter(s => s.status === 'active').length;
       this.alertsCount = sensors.filter(s => s.status === 'alert').length;

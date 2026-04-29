@@ -48,7 +48,9 @@ export class DashboardPage implements OnInit {
   async loadData() {
     this.isLoading = true;
     try {
-      const sensors = await this.sensorService.getSensors();
+      const allSensors = await this.sensorService.getSensors();
+      const sensors = allSensors.filter(s => s.status !== 'maintenance' && s.status !== 'stolen');
+      
       this.stats.totalSensors = sensors.length;
       this.stats.activeSensors = sensors.filter(s => s.status === 'active').length;
       this.stats.offlineSensors = sensors.filter(s => s.status === 'offline').length;
@@ -59,14 +61,14 @@ export class DashboardPage implements OnInit {
       this.stats.avgHumidity = 65;
     } catch (error) {
       console.error('Erreur chargement données:', error);
-      // Valeurs par défaut démo
+      // Valeurs par défaut : 0 si l'API échoue
       this.stats = {
-        totalSensors: 28,
-        activeSensors: 26,
-        offlineSensors: 1,
-        alertCount: 2,
-        avgTemperature: 23.5,
-        avgHumidity: 65
+        totalSensors: 0,
+        activeSensors: 0,
+        offlineSensors: 0,
+        alertCount: 0,
+        avgTemperature: 0,
+        avgHumidity: 0
       };
     }
     this.isLoading = false;
