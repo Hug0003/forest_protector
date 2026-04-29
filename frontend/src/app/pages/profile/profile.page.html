@@ -48,37 +48,7 @@
       </ion-card-content>
     </ion-card>
 
-    <!-- Settings Card -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>⚙️ Paramètres</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="settings-section">
-          <ion-list>
-            <ion-item>
-              <ion-label>Notifications Push</ion-label>
-              <ion-toggle slot="end" [(ngModel)]="settings.notifications" (ionChange)="saveSettings()"></ion-toggle>
-            </ion-item>
 
-            <ion-item>
-              <ion-label>Alertes par Email</ion-label>
-              <ion-toggle slot="end" [(ngModel)]="settings.emailAlerts" (ionChange)="saveSettings()"></ion-toggle>
-            </ion-item>
-
-            <ion-item>
-              <ion-label>Mode Sombre</ion-label>
-              <ion-toggle slot="end" [(ngModel)]="settings.darkMode" (ionChange)="saveSettings()"></ion-toggle>
-            </ion-item>
-
-            <ion-item>
-              <ion-label>Actualisation Automatique</ion-label>
-              <ion-toggle slot="end" [(ngModel)]="settings.autoRefresh" (ionChange)="saveSettings()"></ion-toggle>
-            </ion-item>
-          </ion-list>
-        </div>
-      </ion-card-content>
-    </ion-card>
 
     <!-- Actions Card -->
     <ion-card>
